@@ -100,6 +100,7 @@ class DashboardContext:
             "callbacks": [present.callback_row(c, self.settings, now=now) for c in sorted(snapshot.callbacks, key=lambda c: c.created_at, reverse=True)],
             "gaps": gaps,
             "trends": trends,
+            "ai": self.marketing.ai_status(),
             "setup": setup,
             "settings": {"notifPrefs": snapshot.settings.get("notifPrefs") or {"callbacks": True, "digest": True, "trends": False},
                          "packetConfirmed": bool(snapshot.settings.get("packetConfirmed", False))},
@@ -202,6 +203,11 @@ def build_router(ctx: DashboardContext) -> APIRouter:
                                        marketing=ctx.marketing.summary())
         result = await overlord.answer(question, packet, transport=ctx.overlord_transport())
         return JSONResponse(result)
+
+    @router.get("/api/dashboard/ai")
+    def ai_status() -> JSONResponse:
+        """What the chats show above themselves — model in use and credits left."""
+        return JSONResponse(ctx.marketing.ai_status())
 
     @router.api_route("/api/jobs/{name}", methods=["GET", "POST"])
     def job(name: str, authorization: str | None = Header(None)) -> JSONResponse:

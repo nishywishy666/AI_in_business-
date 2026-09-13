@@ -116,6 +116,32 @@ class MarketingHub:
             log.warning("brief unavailable: %s", exc)
             return None
 
+    def ai_status(self) -> dict:
+        """The line above each chat: which free model is answering, how much of its day is left, and
+        the scan credits behind the trend data. Read-only and best effort — a chat that works while
+        this is unavailable should not be blocked by it."""
+        out: dict[str, Any] = {"provider": "Gemini free tier", "model": None, "modelId": None,
+                               "usedToday": None, "capToday": None, "credits": None, "paused": False,
+                               "resetsIn": None, "offline": self.offline}
+        try:
+            from marketing_radar.usage import build_snapshot
+
+            deps = self.deps()
+            snap = build_snapshot(deps.store, deps.settings, deps.clock)
+        except Exception as exc:
+            log.warning("ai status unavailable: %s", exc)
+            return out
+        active = next((m for m in snap.gemini.models if m.status == "ok"), None)
+        out["model"] = active.label if active else None
+        out["modelId"] = active.id if active else None
+        out["usedToday"] = active.used_today if active else None
+        out["capToday"] = active.daily_cap if active else None
+        out["paused"] = active is None
+        out["resetsIn"] = snap.gemini.resets_in
+        out["credits"] = snap.scrapecreators.remaining
+        out["qualityWarning"] = snap.gemini.quality_warning
+        return out
+
     def summary(self) -> dict | None:
         deps = self.deps()
         try:
