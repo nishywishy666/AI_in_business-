@@ -41,15 +41,16 @@ class RadarApi:
                                              clock=self.deps.clock), not_found="no usage snapshot yet")
 
     # POST /api/chat  {message, thread_id?, post_id?}
-    def chat(self, message: str, *, thread_id: str = "default", post_id: str | None = None) -> Response:
+    def chat(self, message: str, *, thread_id: str = "default", post_id: str | None = None,
+             retry: bool = False) -> Response:
         if not (message or "").strip():
             return 400, {"error": "message is required"}
 
         def run():
-            reply = ChatSession(self.deps, thread_id).send(message, attached_post_id=post_id)
+            reply = ChatSession(self.deps, thread_id).send(message, attached_post_id=post_id, retry=retry)
             return {"reply": reply.text, "thread_id": reply.thread_id, "actions": reply.actions,
                     "model_used": reply.model_used, "quality_warning": reply.quality_warning,
-                    "scan_id": reply.scan_id}
+                    "scan_id": reply.scan_id, "retry_after": reply.retry_after}
 
         return self._guard(run)
 
@@ -123,7 +124,7 @@ def fastapi_router(api: RadarApi):
     @router.post("/chat")
     def chat(payload: dict = Body(...)):
         return respond(api.chat(payload.get("message", ""), thread_id=payload.get("thread_id", "default"),
-                                post_id=payload.get("post_id")))
+                                post_id=payload.get("post_id"), retry=bool(payload.get("retry"))))
 
     @router.post("/posts/{post_id}/like")
     def like(post_id: str):

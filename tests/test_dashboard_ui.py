@@ -60,6 +60,7 @@ def test_bridge_defaults_cover_every_binding_the_patches_add():
     template = ui.PAGE.read_text(encoding="utf-8")
     # bindings the export already carries (a patch may re-emit one, e.g. next to a new button)
     added -= {b.strip() for b in re.findall(r"{{\s*([\w.]+)\s*}}", template)}
+    added = {b for b in added if "." not in b}  # per-row fields of an sc-for alias, not page vals
     assert added <= defaults, added - defaults
 
 

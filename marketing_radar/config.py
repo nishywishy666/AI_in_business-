@@ -30,13 +30,25 @@ DEFAULT_LADDER: tuple[LadderRung, ...] = (
 SCRAPECREATORS_BASE_URL = "https://api.scrapecreators.com"
 
 
+# Free tier only (spec §12.1). A configured ladder may never reach for one of these, whatever the
+# env says — running out of free quota means stepping down to a weaker free model, never paying.
+PAID_MODEL_MARKERS = ("pro", "ultra")
+
+
+def is_free_model(model_id: str) -> bool:
+    parts = model_id.lower().replace("_", "-").split("-")
+    return not any(marker in parts for marker in PAID_MODEL_MARKERS)
+
+
 def parse_ladder_json(raw: str | None) -> tuple[LadderRung, ...]:
     if not raw or not raw.strip():
         return DEFAULT_LADDER
     rows = json.loads(raw)
     rungs = []
     for row in rows:
-        ids = row.get("ids") or [row["id"]]
+        ids = [i for i in (row.get("ids") or [row["id"]]) if is_free_model(i)]
+        if not ids:
+            continue  # the whole rung was paid models
         rungs.append(LadderRung(
             ids=tuple(ids),
             quality=row.get("quality", "low"),
@@ -108,4 +120,5 @@ class Settings:
         return bool(self.youtube_api_key)
 
 
-__all__ = ["Settings", "LadderRung", "DEFAULT_LADDER", "parse_ladder_json", "field"]
+__all__ = ["Settings", "LadderRung", "DEFAULT_LADDER", "parse_ladder_json", "is_free_model",
+           "PAID_MODEL_MARKERS", "field"]

@@ -144,7 +144,7 @@ class MarketingHub:
             saved = list_scripts(deps.store, status="saved")
         except Exception:
             saved = []
-        saved_posts = {s.get("post_id") for s in saved}
+        saved_posts = {s.get("post_id") for s in saved if s.get("post_id")}
         for niche, refs in ((True, brief.get("niche") or []), (False, brief.get("global") or [])):
             posts = []
             for ref in refs:
@@ -162,9 +162,10 @@ class MarketingHub:
                 items.append(card)
                 if post.get("liked"):
                     liked.append(post["post_id"])
-                if post["post_id"] in saved_posts:
+                if post.get("saved") or post["post_id"] in saved_posts:
                     saved_ids.append(post["post_id"])
-        return {"items": items, "likedIds": liked, "savedIds": saved_ids, "savedCount": len(saved), "scanId": brief["scan_id"],
+        return {"items": items, "likedIds": liked, "savedIds": saved_ids, "savedCount": len(set(saved_ids) | saved_posts),
+                "platformsNote": _platforms_note(items, brief), "scanId": brief["scan_id"],
                 "generatedAt": brief.get("generated_at"), "nextScanAt": brief.get("next_scan_at"), "kind": brief.get("kind"),
                 "weeklyTake": brief.get("weekly_take"), "patterns": brief.get("patterns") or [], "credits": brief.get("credits"),
                 "empty": False, "note": brief.get("note"), "greeting": CHAT_GREETING, "offline": self.offline}
@@ -174,12 +175,21 @@ class MarketingHub:
         return self.api().like(post_id)
 
     def save(self, post_id: str) -> tuple[int, dict]:
-        """Save from a card or the modal: Like if needed → angle 0 → saved script (spec §9.3)."""
+        """Save from a card or the modal: mark the post saved, then Like → angle 0 → saved script
+        (spec §9.3) as a best effort. The bookmark is recorded first and on its own, because the
+        script needs Gemini: when the free ladder is cooling off, the save must still stick rather
+        than roll back in the UI."""
         deps = self.deps()
         try:
             post = get_post(deps.store, post_id)
             if post is None:
                 return 404, {"error": f"post {post_id} not found"}
+            deps.store.update(deps.store.paths.post(post_id), {"saved": True})
+        except PostNotFound as exc:
+            return 404, {"error": str(exc)}
+        except Exception as exc:
+            return 503, {"error": "marketing data unavailable", "detail": str(exc)[:200]}
+        try:
             if not post.get("angles"):
                 like_post(deps, post_id)
             if post.get("script_id"):
@@ -191,13 +201,29 @@ class MarketingHub:
             script = choose_angle(deps, post_id, 0)
             saved = save_script(deps.store, script.script_id, clock=deps.clock)
             return 200, {"post_id": post_id, "saved": True, "script": saved.to_doc()}
-        except PostNotFound as exc:
-            return 404, {"error": str(exc)}
         except GeminiExhausted as exc:
-            return 503, {"error": "gemini_exhausted", "resets_at": exc.resets_at.isoformat(),
-                         "note": "AI is paused until midnight Pacific; try again after the reset."}
-        except Exception as exc:
-            return 503, {"error": "marketing data unavailable", "detail": str(exc)[:200]}
+            return 200, {"post_id": post_id, "saved": True, "script": None,
+                         "note": f"Saved. The script will be written once a free model is available again "
+                                 f"(after {exc.resets_at.isoformat()})."}
+        except Exception as exc:  # the bookmark is already stored; say so instead of failing the save
+            log.warning("saved %s but could not write its script: %s", post_id, exc)
+            return 200, {"post_id": post_id, "saved": True, "script": None,
+                         "note": "Saved. The script could not be written just now."}
+
+
+def _platforms_note(items: list[dict], brief: dict) -> str | None:
+    """Why a scan can come back all-YouTube: TikTok, Instagram and Facebook are ScrapeCreators
+    endpoints (paid credits), while YouTube, Reddit and Google Trends are the free sources. With no
+    credits left the scan still runs — on the free sources only — so say so rather than look broken."""
+    present = {c["platform"] for c in items}
+    missing = [label for label in ("TikTok", "Instagram", "Facebook") if label not in present]
+    if not missing or not items:
+        return None
+    credits = brief.get("credits") if isinstance(brief.get("credits"), dict) else {}
+    remaining = credits.get("remaining")
+    tail = (f"{remaining} ScrapeCreators credit{'s' if remaining != 1 else ''} left"
+            if isinstance(remaining, int) else "they need ScrapeCreators credits")
+    return f"No {', '.join(missing)} posts in this scan — {tail}."
 
 
 def trend_card(post: dict, *, niche: bool, score: int) -> dict:

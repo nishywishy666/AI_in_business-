@@ -5,18 +5,18 @@
 ;(function () {
   if (typeof Component === "undefined") return;
   var P = Component.prototype;
-  // Analytics tab switcher (Impact / Voice Ops / Insights): solid theme-green segments with white
-  // text. Injected here because UI/ is read-only; scoped via .analytics-seg so other .seg pickers
-  // (period, call filters) keep the design-system look.
+  // Every segmented control (analytics tabs, period, call filters, Trending for you/globally): solid
+  // theme-green segments with white text, matching the buttons. Injected here because UI/ is
+  // read-only. `.seg-dark` — the 7D/30D switch on the dark chart card — keeps its own treatment.
   if (typeof document !== "undefined" && !document.getElementById("dashboard-bridge-style")) {
     var css = document.createElement("style");
     css.id = "dashboard-bridge-style";
     css.textContent =
-      ".seg.analytics-seg{border-color:var(--color-accent);background:var(--color-accent);overflow:hidden}" +
-      ".seg.analytics-seg .seg-opt{background:var(--color-accent) !important;color:#fff !important;box-shadow:none !important}" +
-      ".seg.analytics-seg .seg-opt + .seg-opt{border-left-color:rgba(255,255,255,.25)}" +
-      ".seg.analytics-seg .seg-opt:has(input:checked){background:var(--color-accent) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55) !important}" +
-      ".seg.analytics-seg .seg-opt:not(:has(input:checked)):hover{background:color-mix(in srgb,#fff 12%,var(--color-accent)) !important}" +
+      ".seg:not(.seg-dark){border-color:var(--color-accent);background:var(--color-accent);overflow:hidden}" +
+      ".seg:not(.seg-dark) .seg-opt{background:var(--color-accent) !important;color:#fff !important;box-shadow:none !important;transition:background .18s ease}" +
+      ".seg:not(.seg-dark) .seg-opt + .seg-opt{border-left-color:rgba(255,255,255,.25)}" +
+      ".seg:not(.seg-dark) .seg-opt:has(input:checked){background:var(--color-accent) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55) !important}" +
+      ".seg:not(.seg-dark) .seg-opt:not(:has(input:checked)):hover{background:color-mix(in srgb,#fff 12%,var(--color-accent)) !important}" +
       // ---- buttons: the segmented control's solid-green look, globally, with a PillNav hover ----
       // Rest: deep-green pill, white label. Hover: a white circle rises from the bottom edge and
       // fills the pill (the PillNav effect, done with a pseudo-element instead of GSAP + extra spans,
@@ -37,6 +37,13 @@
       ".btn:disabled::before{display:none}" +
       // the sidebar is itself the accent colour, so a solid-green button there would vanish
       ".dc-sidebar .btn{background:transparent !important;border-color:rgba(255,255,255,.45) !important}" +
+      // ---- the agents' thinking state: mascot + animated ellipsis ----
+      "@keyframes dc-dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}" +
+      ".dc-dots::after{content:'.';animation:dc-dots 1.3s steps(1,end) infinite}" +
+      "@keyframes dc-mascot-bob{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-3px) rotate(2deg)}}" +
+      ".dc-chat-mascot{animation:dc-mascot-bob 2.4s ease-in-out infinite}" +
+      "@media (prefers-reduced-motion:reduce){.dc-dots::after{animation:none;content:'…'}" +
+      ".dc-chat-mascot{animation:none}}" +
       // ---- motion: modals, floating popups, sidebar collapse, expanded call row ----
       // Entry is pure CSS (the node mounts, the animation plays once). Exit needs the JS wrappers at
       // the bottom of this file, which hold the node for one beat with .dc-closing before React drops it.
@@ -67,7 +74,11 @@
       ".card.dc-overlord-panel.dc-closing{animation:dc-panel-out .16s ease-in both}" +
       ".table td[colspan].dc-closing{animation:dc-row-out .16s ease-in both}" +
       // the sidebar carries its own inline transition:width .15s — slow it down and ease it
-      ".dc-sidebar{transition:width .3s cubic-bezier(.22,1,.36,1) !important}" +
+      ".dc-sidebar{transition:width .3s cubic-bezier(.22,1,.36,1) !important;" +
+      // the nav list scrolls, the collapse button under it stays pinned in view
+      "position:sticky;top:0;height:100vh;max-height:100vh;align-self:flex-start}" +
+      ".dc-sidebar > div{flex:none}" +
+      ".dc-sidebar > div.dc-sidebar-nav{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}" +
       // the transcript row: a table cell cannot animate its own height, so the reveal is the padding
       // opening up under a fading, sliding body — reads as a collapse without breaking table layout
       ".table td[colspan]{animation:dc-row-in .28s cubic-bezier(.22,1,.36,1) both}" +
@@ -77,15 +88,6 @@
       // the hover still swaps to white, it just arrives without the rise
       ".btn,.btn::before{transition:none !important}}";
     document.head.appendChild(css);
-    // The template can't carry the class (UI/ is pinned), so tag the switcher by its labels
-    // whenever the analytics view (re)renders.
-    var tagAnalyticsSeg = function () {
-      var segs = document.querySelectorAll(".seg:not(.analytics-seg)");
-      for (var i = 0; i < segs.length; i++) {
-        var labels = [].map.call(segs[i].querySelectorAll(".seg-opt"), function (l) { return l.textContent.trim(); });
-        if (labels.join("|") === "Impact|Voice Ops|Insights") segs[i].classList.add("analytics-seg");
-      }
-    };
     // The two floating popups and the sidebar are plain divs in the export, told apart by the inline
     // styles the design's renderVals() gives them (support.js turns the style string into React's
     // style object, so these read back off el.style).
@@ -102,17 +104,30 @@
         var d = divs[j].style;
         if (d.flexDirection === "column" && (d.width === "64px" || d.width === "220px")) {
           divs[j].classList.add("dc-sidebar");
+          var kids = divs[j].children;
+          for (var k = 0; k < kids.length; k++) {
+            if (kids[k].style && kids[k].style.flex === "1") kids[k].classList.add("dc-sidebar-nav");
+          }
           return;
         }
       }
     };
-    var tagAll = function () { tagAnalyticsSeg(); tagMotionTargets(); };
-    new MutationObserver(tagAll).observe(document.body || document.documentElement, { childList: true, subtree: true });
-    tagAll();
+    new MutationObserver(tagMotionTargets).observe(document.body || document.documentElement, { childList: true, subtree: true });
+    tagMotionTargets();
   }
   var origRender = P.renderVals;
   var origMount = P.componentDidMount;
   var origUnmount = P.componentWillUnmount;
+  // Shown one at a time beside the mascot while a turn is in flight. Kept in Tony's register.
+  var THINKING_WORDS = ["Thinking", "Pondering", "Mulling it over", "Chewing on it", "Turning it over",
+    "Noodling on it", "Having a think", "Weighing it up", "Working it out", "Putting it together",
+    "Casting an eye over it", "Giving it a moment"];
+  function nextWord(current) {
+    var pick = current;
+    while (pick === current) pick = THINKING_WORDS[Math.floor(Math.random() * THINKING_WORDS.length)];
+    return pick;
+  }
+  var MAX_CHAT_RETRIES = 4;  // ~4 cooldowns before the question gives up and reports back
   var PLACEHOLDER_TREND = { id: "_none", niche: true, platform: "", score: 0, title: "No scan yet", why: "" };
   var BAND_STYLE = {
     "Good": { icon: "✓", style: "font-size:11px;font-weight:600;color:#3a7a4a" },
@@ -130,7 +145,8 @@
     overlordDraft: "", overlordPlaceholder: "Ask about calls, bookings or trends…",
     setOverlordDraft: function () {}, overlordKeyDown: function () {}, sendOverlord: function () {},
     chartRange7: true, chartRange30: false, setChartRange7: function () {}, setChartRange30: function () {},
-    chartDeltaArrow: "↑", chartDeltaLabel: "vs first day in last 7 days"
+    chartDeltaArrow: "↑", chartDeltaLabel: "vs first day in last 7 days",
+    goProfile: function () {}
   };
 
   function api(path, opts) {
@@ -167,6 +183,7 @@
   };
   P.componentWillUnmount = function () {
     clearInterval(this.__timer);
+    if (this.__live) { clearInterval(this.__live.thinkTimer); clearTimeout(this.__live.retryTimer); }
     if (this.__clickOut && typeof document !== "undefined") document.removeEventListener("mousedown", this.__clickOut, true);
     if (origUnmount) { try { origUnmount.call(this); } catch (e) { console.error(e); } }
   };
@@ -206,6 +223,11 @@
       patch.overlordThread = [{ from: "agent", text: d.overlord.greeting }];
       patch.marketingChat = [{ from: "agent", text: d.trends.greeting }];
       live.greeted = true;
+      live.greeting = d.trends.greeting;
+    } else if (live.greeting !== d.trends.greeting && (this.state.marketingChat || []).length <= 1) {
+      // the scan landed after the panel first rendered; refresh the untouched opening line
+      patch.marketingChat = [{ from: "agent", text: d.trends.greeting }];
+      live.greeting = d.trends.greeting;
     }
     this.setState(patch);
   };
@@ -244,12 +266,19 @@
     vals.chartRange7 = !thirty; vals.chartRange30 = thirty;
     vals.setChartRange7 = function () { self.setChartRange("7d"); };
     vals.setChartRange30 = function () { self.setChartRange("30d"); };
+    vals.goProfile = function () { self.setScreen("profile"); };
+    // My saves / My likes rows open the trend they name
+    vals.savedLikedTrends = (vals.savedLikedTrends || []).map(function (t) {
+      return Object.assign({}, t, { onOpen: function () { self.openTrend(t.id); } });
+    });
     if (!d) {
       vals.platformGroups = [];
       vals.trendCountLabel = refreshing ? "Refreshing trends…"
         : (live && (live.refreshError || live.error) ? "Backend unavailable: " + (live.refreshError || live.error) : "Loading…");
       vals.showMoreLabel = ""; vals.callLogCountLabel = "Loading calls…";
       vals.freshness = { asOf: live && live.error ? "unavailable" : "loading", timezone: "", staleAfterMinutes: 60 };
+      vals.marketingChat = this.__chatRows(vals.marketingChat);
+      vals.overlordThread = this.__chatRows(vals.overlordThread);
       return vals;
     }
     var s = this.state;
@@ -278,7 +307,9 @@
     if (thirty) vals.chartGridX = (vals.chartGridX || []).filter(function (_, i) { return i % 5 === 0; });
     vals.quickActions = ov.quickActions.map(function (q) {
       return Object.assign({}, q, {
-        tagStyle: q.tag === "High" ? "background:var(--color-neutral-800);color:var(--color-neutral-300)" : "background:var(--color-neutral-200);color:var(--color-neutral-700)",
+        // themed pills: amber for the one that wants attention, accent green for the rest
+        tagStyle: q.tag === "High" ? "background:var(--color-accent-400);color:var(--color-accent-900);border-color:var(--color-accent-400)"
+          : "background:var(--color-accent);color:#fff;border-color:var(--color-accent)",
         onClick: function () { self.setScreen(q.screen); }
       });
     });
@@ -315,6 +346,7 @@
       vals.savedLikedTrends = []; vals.savedCount = 0; vals.likedCount = 0;
     } else {
       vals.trendCountLabel = vals.trendCountLabel + " · scan " + d.trends.scanId;
+      if (d.trends.platformsNote) vals.trendCountLabel = vals.trendCountLabel + " · " + d.trends.platformsNote;
     }
     if (refreshing) vals.trendCountLabel = "Refreshing trends…";
     else if (live.refreshError) vals.trendCountLabel = vals.trendCountLabel + " · refresh failed: " + live.refreshError;
@@ -324,6 +356,8 @@
       vals.scriptModalTrend = t ? { title: t.title, angles: t.angles, guide: t.guide }
         : { title: card ? card.title : "Trend", angles: ["Generating three angles from the transcript…"], guide: "One moment — the marketing agent is writing the breakdown." };
     }
+    vals.marketingChat = this.__chatRows(vals.marketingChat);
+    vals.overlordThread = this.__chatRows(vals.overlordThread);
     vals.overlordQuickQuestions = (vals.overlordQuickQuestions || []).map(function (q) {
       var question = { "Bookings last week?": "How many bookings did the AI take this week?", "What's trending?": "What's trending this week?",
         "What are people calling about?": "What are people calling about most?" }[q.label] || q.label;
@@ -332,24 +366,107 @@
     return vals;
   };
 
+  // ---- the thinking state ----
+  // A turn in flight is not a message: it is the mascot, one of THINKING_WORDS, and an animated
+  // ellipsis, in place of the design's "…" bubble. While a free model is only rate-limited (not out
+  // of quota for the day) the question stays open and this keeps running until the retry lands.
+  P.__chatRows = function (rows) {
+    var live = this.__live, word = (live && live.thinkWord) || THINKING_WORDS[0];
+    return (rows || []).map(function (m) {
+      var side = m.from === "user" ? "flex-end" : "flex-start";
+      var row = { rowStyle: "display:flex;align-items:flex-end;gap:8px;align-self:" + side + ";max-width:92%",
+        mascotStyle: "display:none", dotsStyle: "display:none" };
+      if (!m.pending) return Object.assign({}, m, row);
+      return Object.assign({}, m, row, {
+        text: word,
+        mascotStyle: "width:34px;height:34px;flex:none;object-fit:contain;border-radius:50%;padding:2px;"
+          + "background:var(--color-neutral-900)",
+        dotsStyle: "",
+        bubbleStyle: "align-self:flex-end;font-size:12px;font-style:italic;color:var(--color-neutral-600);"
+          + "background:transparent;padding:6px 0;max-width:none"
+      });
+    });
+  };
+  P.__startThinking = function () {
+    var self = this, live = this.__live;
+    if (!live || live.thinkTimer) return;
+    live.thinkWord = nextWord(null);
+    live.thinkTimer = setInterval(function () {
+      live.thinkWord = nextWord(live.thinkWord);
+      self.setState({});
+    }, 2400);
+  };
+  P.__stopThinking = function (stillPending) {
+    var live = this.__live;
+    if (!live || !live.thinkTimer || stillPending) return;
+    clearInterval(live.thinkTimer);
+    live.thinkTimer = null;
+  };
+
   // ---- actions → API ----
   P.__replaceLast = function (key, text) {
+    var self = this;
     this.setState(function (s) {
       var arr = (s[key] || []).slice();
       var idx = -1;
       arr.forEach(function (m, i) { if (m.pending) idx = i; });
       if (idx >= 0) arr[idx] = { from: "agent", text: text }; else arr.push({ from: "agent", text: text });
       return (function (o) { o[key] = arr; return o; })({});
+    }, function () {  // after the update, so the check sees the thread this turn just settled
+      var open = ((self.state.marketingChat || []).concat(self.state.overlordThread || []))
+        .some(function (m) { return m.pending; });
+      self.__stopThinking(open);
+    });
+  };
+  // What the agents can honestly answer from right now. Asking before the data is in produced
+  // confusing failures ("marketing data unavailable"), so the chat answers for itself instead.
+  P.__dataState = function () {
+    var live = this.__live, d = live && live.data;
+    if (!d) {
+      return { ready: false, marketing: false,
+        text: live && live.error ? "I can't reach your dashboard data right now (" + live.error + "). I'll answer as soon as it's back."
+          : "Your data hasn't loaded yet — give me a moment and ask again." };
+    }
+    if (live.refreshing) return { ready: true, marketing: false, text: "I'm still analysing the latest scan — ask me again in a moment." };
+    var t = d.trends;
+    if (t.empty) {
+      return { ready: true, marketing: false,
+        text: "No trend data has loaded yet" + (t.note ? " — " + t.note : ". The first scan is scheduled; ask me once it lands.") };
+    }
+    if (!t.items.length) return { ready: true, marketing: false, text: "The scan has landed but I'm still analysing it — ask me again in a moment." };
+    return { ready: true, marketing: true };
+  };
+  P.__answerLocally = function (key, question, text) {
+    this.setState(function (s) {
+      return { marketingChat: key === "marketingChat" ? s.marketingChat.concat([{ from: "user", text: question }, { from: "agent", text: text }]) : s.marketingChat,
+        overlordThread: key === "overlordThread" ? s.overlordThread.concat([{ from: "user", text: question }, { from: "agent", text: text }]) : s.overlordThread,
+        chatDraft: key === "marketingChat" ? "" : s.chatDraft, overlordDraft: key === "overlordThread" ? "" : s.overlordDraft };
     });
   };
   P.sendChat = function () {
     var text = (this.state.chatDraft || "").trim();
     if (!text) return;
     var self = this;
+    var state = this.__dataState();
+    if (!state.marketing) return this.__answerLocally("marketingChat", text, state.text);
     this.setState(function (s) { return { marketingChat: s.marketingChat.concat([{ from: "user", text: text }, { from: "agent", text: "…", pending: true }]), chatDraft: "" }; });
-    post("/api/marketing/chat", { message: text, thread_id: "ui" })
-      .then(function (r) { self.__replaceLast("marketingChat", r.reply + (r.quality_warning ? " (" + r.quality_warning + ")" : "")); })
-      .catch(function (e) { self.__replaceLast("marketingChat", "The marketing agent is unavailable right now: " + errText(e)); });
+    this.__startThinking();
+    // `retry_after` means every free model is briefly rate-limited, not that the answer failed: hold
+    // the turn open, keep the mascot thinking, and ask again when the cooldown is up.
+    var live = this.__live, tries = 0;
+    var ask = function () {
+      post("/api/marketing/chat", { message: text, thread_id: "ui", retry: tries > 0 }).then(function (r) {
+        if (r.retry_after && tries < MAX_CHAT_RETRIES) {
+          tries++;
+          live.retryTimer = setTimeout(ask, Math.min(90, Math.max(5, r.retry_after)) * 1000);
+          return;
+        }
+        self.__replaceLast("marketingChat", r.reply + (r.quality_warning ? " (" + r.quality_warning + ")" : ""));
+      }).catch(function (e) {
+        self.__replaceLast("marketingChat", "The marketing agent is unavailable right now: " + errText(e));
+      });
+    };
+    ask();
   };
   P.setOverlordDraft = function (e) { this.setState({ overlordDraft: e.target.value }); };
   P.overlordKeyDown = function (e) { if (e.key === "Enter") this.sendOverlord(); };
@@ -361,7 +478,10 @@
   };
   P.askOverlord = function (q) {
     var self = this;
-    this.setState(function (s) { return { overlordThread: s.overlordThread.concat([{ from: "user", text: q }, { from: "agent", text: "…", pending: true }]) }; });
+    var state = this.__dataState();  // the overlord reads the records, so it only needs the bootstrap
+    if (!state.ready) return this.__answerLocally("overlordThread", q, state.text);
+    this.setState(function (s) { return { overlordThread: s.overlordThread.concat([{ from: "user", text: q }, { from: "agent", text: "…", pending: true }]), overlordDraft: "" }; });
+    this.__startThinking();
     post("/api/overlord/ask", { question: q })
       .then(function (r) { self.__replaceLast("overlordThread", r.answer); })
       .catch(function (e) { self.__replaceLast("overlordThread", "I can't reach the records right now: " + errText(e)); });
@@ -378,10 +498,8 @@
       live.refreshError = errText(e);
     }).then(function () { live.refreshing = false; self.setState({}); });
   };
-  P.likeTrend = function (id) {
+  P.__fetchAngles = function (id, onError) {
     var self = this, live = this.__live;
-    if (id === "_none") return;
-    this.setState(function (s) { return { likedTrends: Object.assign({}, s.likedTrends, (function (o) { o[id] = true; return o; })({})), scriptModalTrendId: id }; });
     if (live.angles[id] || live.pending[id]) return;
     live.pending[id] = true;
     var card = (this.trendsData || []).filter(function (x) { return x.id === id; })[0];
@@ -389,8 +507,22 @@
       live.angles[id] = { title: card ? card.title : id, angles: r.angles || [], guide: r.breakdown || "No filming breakdown was returned." };
     }).catch(function (e) {
       live.angles[id] = { title: card ? card.title : id, angles: [], guide: "Could not generate angles: " + errText(e) };
-      self.setState(function (s) { var l = Object.assign({}, s.likedTrends); delete l[id]; return { likedTrends: l }; });
+      if (onError) onError(e);
     }).then(function () { delete live.pending[id]; self.setState({}); });
+  };
+  P.likeTrend = function (id) {
+    var self = this;
+    if (id === "_none") return;
+    this.setState(function (s) { return { likedTrends: Object.assign({}, s.likedTrends, (function (o) { o[id] = true; return o; })({})), scriptModalTrendId: id }; });
+    this.__fetchAngles(id, function () {  // the like did not stick: drop the optimistic heart
+      self.setState(function (s) { var l = Object.assign({}, s.likedTrends); delete l[id]; return { likedTrends: l }; });
+    });
+  };
+  // Opening a row in My saves / My likes: show its script card without also liking it.
+  P.openTrend = function (id) {
+    if (id === "_none") return;
+    this.setState({ savedLikedModal: null, scriptModalTrendId: id });
+    this.__fetchAngles(id);
   };
   P.saveTrend = function (id) {
     var self = this;

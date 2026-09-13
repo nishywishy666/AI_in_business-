@@ -75,6 +75,32 @@ def test_counters_reset_at_pacific_midnight(store, settings, clock):
     assert result.model_used == "gemini-3.8-flash"
 
 
+def test_per_minute_429_is_a_cooldown_not_the_days_quota(store, settings, clock):
+    """A burst hitting Gemini's per-minute limit used to retire every free rung until midnight
+    Pacific, which is what left the agent silent. It steps down, then comes back on its own."""
+    rpm = RateLimited("429 RESOURCE_EXHAUSTED GenerateRequestsPerMinutePerProjectPerModel retryDelay: 24s",
+                      daily=False, retry_after=24)
+    transport = FakeGeminiTransport(default='{"ok": true}', scripts={"gemini-3.8-flash": [rpm]})
+    ladder = _ladder(store, settings, clock, transport)
+    result = ladder.generate("chat", system="s", prompt="p")
+    assert result.model_used == "gemini-2.5-flash"  # stepped down to the next free model
+    assert ladder.daily().exhausted == [] and "gemini-3.8-flash" in ladder.daily().cooldown_until
+
+    ladder.generate("chat", system="s", prompt="p")
+    assert transport.calls[-1].model_id == "gemini-2.5-flash", "still cooling, so not retried yet"
+    clock.advance(minutes=1)
+    assert ladder.generate("chat", system="s", prompt="p").model_used == "gemini-3.8-flash"
+
+
+def test_every_rung_cooling_reports_the_short_wait_not_midnight(store, settings, clock):
+    settings.ladder = parse_ladder_json('[{"ids":["a"],"quality":"high","daily_cap":1},{"ids":["b"],"quality":"low","daily_cap":1}]')
+    rpm = lambda: RateLimited("429 perminute", daily=False, retry_after=30)
+    transport = FakeGeminiTransport(scripts={"a": [rpm()], "b": [rpm()]})
+    with pytest.raises(GeminiExhausted) as exc:
+        _ladder(store, settings, clock, transport).generate("chat", system="s", prompt="p")
+    assert exc.value.resets_at < MIDNIGHT_PT and exc.value.resets_at > clock()
+
+
 def test_min_rung_forces_a_lower_rung(store, settings, clock):
     transport = FakeGeminiTransport()
     result = _ladder(store, settings, clock, transport).generate("synthesize", system="s", prompt="p", min_rung=2)

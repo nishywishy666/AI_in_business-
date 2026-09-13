@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import re
 import uuid
 from dataclasses import dataclass, field
 from typing import Any, Protocol
@@ -15,7 +16,14 @@ Purpose = str  # expand | synthesize | recap | chat | angles | script
 
 
 class RateLimited(RuntimeError):
-    pass
+    """429. `daily` distinguishes "today's quota is gone" from the per-minute rate limit, which is
+    only a short wait — treating the two the same is what used to burn the whole ladder in seconds."""
+
+    def __init__(self, message: str = "", *, daily: bool = True, retry_after: float = 60.0) -> None:
+        """`daily=False` marks a short-window (per-minute) limit: a cooldown, not the day's quota."""
+        super().__init__(message)
+        self.daily = daily
+        self.retry_after = retry_after
 
 
 class ModelUnavailable(RuntimeError):
@@ -59,13 +67,29 @@ class GenAiTransport:
         except errors.APIError as exc:
             code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
             if code == 429:
-                raise RateLimited(str(exc)) from exc
+                raise RateLimited(str(exc), daily=not _is_short_window(exc), retry_after=_retry_after(exc)) from exc
             if code in (403, 404):
                 raise ModelUnavailable(str(exc)) from exc
             raise
         usage = getattr(response, "usage_metadata", None)
         tokens = getattr(usage, "total_token_count", None) if usage else None
         return GeminiRaw(text=response.text or "", tokens=tokens)
+
+
+def _is_short_window(exc: Exception) -> bool:
+    """Google names the violated quota in the 429 body. A per-minute one (e.g.
+    `GenerateRequestsPerMinutePerProjectPerModel`) is over in seconds, so parking the model for the
+    rest of the Pacific day — which used to burn every free rung in one burst — is wrong. Anything
+    we can't positively identify as short is still treated as the day's quota, per spec §12.1."""
+    text = str(exc).lower().replace("_", "").replace(" ", "")
+    return any(marker in text for marker in ("perminute", "persecond", "perhour", "rpm"))
+
+
+def _retry_after(exc: Exception) -> float:
+    match = re.search(r"retrydelay[\"':\s]+(\d+(?:\.\d+)?)s", str(exc).lower().replace(" ", ""))
+    if match:
+        return min(300.0, max(5.0, float(match.group(1))))
+    return 60.0
 
 
 @dataclass
@@ -142,7 +166,8 @@ class GeminiLadder:
         self.store.set(self.store.paths.gemini_daily(daily.pacific_date), daily.to_doc())
 
     def rung_statuses(self, now: dt.datetime | None = None) -> list[RungStatus]:
-        daily = self.daily(now)
+        at = now or self.clock()
+        daily = self.daily(at)
         out: list[RungStatus] = []
         for rung in self.settings.ladder:
             model_id = _pick_model(rung, daily)
@@ -150,7 +175,8 @@ class GeminiLadder:
                 out.append(RungStatus(rung, rung.ids[0], 0, 0, True, unavailable=True))
                 continue
             used = daily.used.get(model_id, 0)
-            out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), model_id in daily.exhausted))
+            spent = model_id in daily.exhausted or _cooling(daily, model_id, at)
+            out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), spent))
         return out
 
     def active(self, now: dt.datetime | None = None) -> tuple[int, RungStatus] | None:
@@ -175,10 +201,17 @@ class GeminiLadder:
                     continue
                 if model_id in daily.exhausted or daily.used.get(model_id, 0) >= rung.daily_cap:
                     break  # this rung is spent for today; step down once
+                if _cooling(daily, model_id, now):
+                    break  # rate-limited a moment ago; step down rather than wait
                 try:
                     raw = self.transport.generate(model_id, system=system, prompt=prompt, json_mode=json_mode)
-                except RateLimited:
-                    daily.exhausted.append(model_id)
+                except RateLimited as exc:
+                    # a per-minute 429 only parks the model for a moment; only the daily quota retires it
+                    if getattr(exc, "daily", False):
+                        daily.exhausted.append(model_id)
+                    else:
+                        wait = getattr(exc, "retry_after", 60.0)
+                        daily.cooldown_until[model_id] = (now + dt.timedelta(seconds=wait)).isoformat()
                     self._save_daily(daily)
                     break
                 except ModelUnavailable:
@@ -192,7 +225,21 @@ class GeminiLadder:
                     text=raw.text, model_used=model_id, quality=rung.quality, rung_index=index,
                     quality_warning=self.quality_warning(index, rung), tokens=raw.tokens, purpose=purpose,
                 )
-        raise GeminiExhausted(self.resets_at(now))
+        raise GeminiExhausted(self._next_free_at(daily, now))
+
+    def _next_free_at(self, daily: GeminiDaily, now: dt.datetime) -> dt.datetime:
+        """When something on the ladder can be tried again: the soonest cooldown if every rung is
+        merely cooling, otherwise the Pacific reset."""
+        reset = self.resets_at(now)
+        waits = []
+        for value in daily.cooldown_until.values():
+            try:
+                at = dt.datetime.fromisoformat(value)
+            except ValueError:
+                continue
+            if at > now:
+                waits.append(at)
+        return min(min(waits), reset) if waits else reset
 
     def quality_warning(self, index: int, rung: LadderRung) -> str | None:
         if rung.quality == "high" and index == 0:
@@ -208,6 +255,16 @@ class GeminiLadder:
         self.store.set(self.store.paths.usage_event(event.event_id), event.to_doc())
 
 
+def _cooling(daily: GeminiDaily, model_id: str, now: dt.datetime) -> bool:
+    raw = daily.cooldown_until.get(model_id)
+    if not raw:
+        return False
+    try:
+        return dt.datetime.fromisoformat(raw) > now
+    except ValueError:
+        return False
+
+
 def _pick_model(rung: LadderRung, daily: GeminiDaily) -> str | None:
     for model_id in rung.ids:
         if model_id not in daily.unavailable:
@@ -215,7 +272,7 @@ def _pick_model(rung: LadderRung, daily: GeminiDaily) -> str | None:
     return None
 
 
-def rung_statuses_from_daily(settings: Settings, daily: GeminiDaily) -> list[RungStatus]:
+def rung_statuses_from_daily(settings: Settings, daily: GeminiDaily, *, now: dt.datetime | None = None) -> list[RungStatus]:
     """Same view as GeminiLadder.rung_statuses but computed from a stored counter doc,
     so the usage module never has to import a transport."""
     out: list[RungStatus] = []
@@ -225,7 +282,8 @@ def rung_statuses_from_daily(settings: Settings, daily: GeminiDaily) -> list[Run
             out.append(RungStatus(rung, rung.ids[0], 0, 0, True, unavailable=True))
             continue
         used = daily.used.get(model_id, 0)
-        out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), model_id in daily.exhausted))
+        spent = model_id in daily.exhausted or (now is not None and _cooling(daily, model_id, now))
+        out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), spent))
     return out
 
 

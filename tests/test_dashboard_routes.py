@@ -124,6 +124,25 @@ def test_marketing_flow_through_the_dashboard(client):
     assert boot["overview"]["quickActions"][2]["label"] == "Top trend this week"
 
 
+def test_save_sticks_even_when_every_free_model_is_paused(tmp_path):
+    """A save is a bookmark, not an AI call. With the free Gemini ladder spent, the script cannot be
+    written — but the save itself must still stick, or the UI rolls it back and the trend the owner
+    just saved looks deleted."""
+    from marketing_radar.agent import FakeGeminiTransport, RateLimited
+
+    app, ctx, _ = dashboard_app(tmp_path)
+    with TestClient(app) as c:
+        assert c.post("/api/jobs/marketing-scan").status_code == 200
+        post_id = c.get("/api/dashboard/trends").json()["items"][0]["id"]
+        deps = ctx.marketing.deps()
+        deps.gemini.transport = FakeGeminiTransport(
+            scripts={model: [RateLimited("429")] for rung in deps.settings.ladder for model in rung.ids})
+        body = c.post(f"/api/dashboard/trends/{post_id}/save").json()
+        assert body["saved"] is True and body["script"] is None and body["note"]
+        after = c.get("/api/dashboard/trends").json()
+        assert post_id in after["savedIds"] and after["savedCount"] >= 1
+
+
 def test_refresh_trends_rereads_the_brief_now(client):
     """The "Refresh now" button: never 500s on an empty state, and picks up a brief that landed after
     the once-a-day local cache was written — the case where the UI would otherwise show nothing."""

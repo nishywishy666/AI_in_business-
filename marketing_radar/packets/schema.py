@@ -84,6 +84,9 @@ class TrendPacket(RadarModel):
     why_it_works: str | None = None
     format_guess: str | None = None
     liked: bool = False
+    # the owner's bookmark. Kept on the post, not derived from a saved script, so saving never
+    # depends on the AI being available to write one.
+    saved: bool = False
     transcript: str | None = None
     breakdown: str | None = None
     angles: list[str] | None = None
@@ -206,6 +209,9 @@ class GeminiDaily(RadarModel):
     used: dict[str, int] = Field(default_factory=dict)
     exhausted: list[str] = Field(default_factory=list)
     unavailable: list[str] = Field(default_factory=list)
+    # model id -> ISO timestamp it may be tried again. A 429 off Gemini's per-minute rate limit is a
+    # short cooldown, not the day's quota; only a daily-quota 429 goes in `exhausted`.
+    cooldown_until: dict[str, str] = Field(default_factory=dict)
 
 
 class SynthesisCard(RadarModel):
