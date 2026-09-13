@@ -20,7 +20,7 @@ def test_missing_required_var_raises_with_names():
 
 def test_provider_conditionals_and_defaults():
     config = load_config(VOICE_ENV)
-    assert config.groq_router_model == "llama-3.1-8b-instant" and config.elevenlabs_tts_model == "eleven_flash_v2_5"
+    assert config.groq_router_model == "openai/gpt-oss-20b" and config.elevenlabs_tts_model == "eleven_flash_v2_5"
     assert config.tz_business == "Australia/Melbourne" and config.session_sink == "local" and not config.enable_sim
     with pytest.raises(MissingConfig):
         load_config({**VOICE_ENV, "EMAIL_PROVIDER": "resend"})

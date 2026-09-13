@@ -5,6 +5,21 @@ from typing import Iterable
 from .backend import WhereClause, is_document_path
 
 
+def _load_credentials(service_account, value: str):
+    """FIREBASE_CREDENTIALS_JSON is a file path locally; hosts without a file (Railway) pass the
+    service-account JSON itself, raw or base64, the same encoding as FIREBASE_SA_JSON."""
+    import base64
+    import json
+    import os
+
+    text = value.strip()
+    if os.path.isfile(text):
+        return service_account.Credentials.from_service_account_file(text)
+    if not text.startswith("{"):
+        text = base64.b64decode(text).decode("utf-8")
+    return service_account.Credentials.from_service_account_info(json.loads(text))
+
+
 class FirestoreBackend:
     """google-cloud-firestore adapter. Imported lazily so offline runs never need the SDK."""
 
@@ -14,7 +29,7 @@ class FirestoreBackend:
         if credentials_path:
             from google.oauth2 import service_account
 
-            creds = service_account.Credentials.from_service_account_file(credentials_path)
+            creds = _load_credentials(service_account, credentials_path)
             self._client = firestore.Client(project=project_id or creds.project_id, credentials=creds)
         else:
             self._client = firestore.Client(project=project_id)

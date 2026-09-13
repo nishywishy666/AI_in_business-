@@ -30,4 +30,6 @@ Deviations from the plan:
 - The booking machine has no "no email, thanks" path (TODO(spec)), so every demo booking supplies an email.
 - Extra: `local_config()` so `SESSION_SINK=local` needs no env at all; audio providers load only when ElevenLabs is configured.
 
-Still open: Vercel deploy (`includeFiles`, rewrite order, cron GETs untested live), owner sign-off on the Uncle Tony dataset and capacity, `config/pricing.yaml` so costs stop reading 0, Firestore rules for the three dashboard writes.
+- Deploy moved to Railway (always-on, Twilio WebSocket + APScheduler). Groq router model changed to `openai/gpt-oss-20b` because `llama-3.1-8b-instant` is no longer served (lesson 0006, owner-approved deviation from vr_plan.md V3).
+
+Still open: Railway deploy (first live boot with Firestore, Twilio webhook, first live scan), owner sign-off on the Uncle Tony dataset and capacity, `config/pricing.yaml` so costs stop reading 0, Firestore rules for the three dashboard writes.
