@@ -1,0 +1,37 @@
+# Dashboard shared settings (UI/... uploads/metrics.md "Shared settings"). One settings object, one
+# definition per metric. Bands are initial dashboard rules, not validated industry thresholds.
+currency: AUD
+business_timezone: Australia/Melbourne
+# Weekly schedule in the business time zone; days absent are closed. From the mockup's research packet.
+opening_hours:
+  mon: {open: "07:30", close: "14:30"}
+  tue: {open: "07:30", close: "14:30"}
+  wed: {open: "07:30", close: "14:30"}
+  thu: {open: "07:30", close: "14:30"}
+  fri: {open: "07:30", close: "14:30"}
+  sat: {open: "08:00", close: "15:00"}
+ai_cost_per_minute_cents: null        # required for estimated AI cost; no default prescribed -> "No data"
+manual_minutes_per_call: 11.5         # ASSUMPTION (metrics.md)
+labour_cost_per_hour_cents: 4250      # ASSUMPTION (metrics.md)
+ai_daily_cost_cap_cents: 2000
+ai_daily_cost_warn_fraction: 0.8
+baseline_per_day: 6                   # ASSUMPTION until a week of real calls exists
+stale_after_minutes: 60
+failed_statuses: [error, failed, busy, no-answer, canceled]
+callback_age_warn_minutes: 120        # example only, not an approved threshold (metrics.md 3.4)
+included_minutes_per_month: 1000      # plan quota shown on the Profile screen
+handoff_classes:
+  planned: [large_group, catering, complaint, booking_change]
+  forced: [no_data, allergen_unknown, unanswered_question, other]
+bands:
+  task_success:   {good: 0.85, bad: 0.70}
+  containment:    {good: 0.70, bad: 0.50}
+  coherence:      {good: 0.90, bad: 0.75}
+  error_rate:     {good: 0.03, bad: 0.10}      # lower is better
+  fallback_rate:  {good: 0.10, bad: 0.20}      # lower is better; bad value is an ASSUMPTION
+  forced_handoff: {good: 0.10, bad: 0.20}      # lower is better; bad value is an ASSUMPTION
+  planned_handoff_healthy: [0.30, 0.40]
+  latency_p50_ms: {good: 1500, bad: 3000}
+  latency_p90_ms: {good: 3000, bad: 5000}
+  volume_tolerance: 0.20
+  volume_bad_multiple: 2.0

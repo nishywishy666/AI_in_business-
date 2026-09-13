@@ -25,6 +25,14 @@
 12. Place one real test call end to end, including the email arriving.
 13. Check that at least one `rollups/` document exists so the dashboard is not empty on screen.
 
+**Dashboard on Vercel (plan 0005)**
+16. Environment: everything in `.env.example` plus `CRON_SECRET`; `SESSION_SINK=firestore`, `ENABLE_SIM=0`, `MARKETING_SCHEDULER=0`, `MARKETING_RADAR_OFFLINE=0`, `FIREBASE_CREDENTIALS_JSON` (marketing, a file path) **and** `FIREBASE_SA_JSON` (voice/dashboard, base64) both set for the same project.
+17. `uv run python scripts/seed_business.py` once: capacitySlots, menuItems, facts, and the marketing questionnaire at `users/{BUSINESS_ID}/context/questionnaire`. Confirm the Uncle Tony prices/allergens with the owner first — they were transcribed from the mockup.
+18. Open `/` — every screen should show "Live data"; if it says "Demo data" a `CAsim…` call exists (delete the demo calls or leave them for the judges, but say so).
+19. Trigger `/api/jobs/marketing-scan` with `Authorization: Bearer $CRON_SECRET` before the demo so the Marketing screen is not the empty state; check the cron entries appear in the Vercel project (Settings → Cron Jobs).
+20. `functions.api/index.py.includeFiles` in `vercel.json` must keep `UI/**`, `data/**`, `config/**`, `tests/fixtures/**` — the page and the offline fallback read them from disk at request time.
+21. Firestore rules: the dashboard writes `businesses/{id}/callbacks/*.status`, `businesses/{id}/unanswered/*`, `businesses/{id}/settings/dashboard`; the marketing agent writes `users/{uid}/marketingRadar/**` (spec §6.2 rules still to deploy).
+
 ## Real-call acceptance gates (vr_plan.md §13)
 These cannot run in `pytest`; tick them off on a real phone.
 - [ ] Phase 1 — a call plays the disclosure greeting, then echoes the caller's audio back; `syd1` appears in Vercel function logs.

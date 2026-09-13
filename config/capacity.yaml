@@ -1,19 +1,16 @@
 # Service windows and seat counts (vr_plan.md §8.3, §8.4). scripts/seed_business.py materialises
 # capacitySlots from this file; check_availability never offers a time outside these windows.
 #
-# TODO(spec): the spec does not state the restaurant's service windows, slot length, or seats per
-# window. Fill this in before running scripts/seed_business.py — the seeder refuses an empty file.
-#
-# Expected shape (one entry per weekday, times in TZ_BUSINESS):
-# windows:
-#   - days: [mon, tue, wed, thu, fri]
-#     open: "11:30"
-#     close: "14:30"
-#     slot_minutes: 30
-#     seats_total: 40
-#   - days: [fri, sat]
-#     open: "17:30"
-#     close: "21:30"
-#     slot_minutes: 30
-#     seats_total: 40
-windows: []
+# Filled from the dashboard mockup's research packet (plan 0005): Mon-Fri 7:30am-2:30pm, Sat 8am-3pm,
+# 28 indoor + 12 outdoor seats. slot_minutes=30 is an ASSUMPTION. OWNER-UNVERIFIED: confirm before demo.
+windows:
+  - days: [mon, tue, wed, thu, fri]
+    open: "07:30"
+    close: "14:30"
+    slot_minutes: 30
+    seats_total: 40
+  - days: [sat]
+    open: "08:00"
+    close: "15:00"
+    slot_minutes: 30
+    seats_total: 40

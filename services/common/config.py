@@ -119,9 +119,29 @@ def load_config(env: Mapping[str, str] | None = None, *, required: tuple[str, ..
     )
 
 
+# Defaults that make `SESSION_SINK=local` boot with zero keys (dashboard + simulator, plan 0005).
+# Nothing here is a secret; the local sink cannot reach Firestore and Twilio never calls a laptop.
+_LOCAL_DEFAULTS = {"BUSINESS_ID": "uncle_tony", "PUBLIC_BASE_URL": "http://localhost:8000"}
+
+
+def local_config(env: Mapping[str, str] | None = None) -> VoiceConfig:
+    """`load_config` with no required variables and local defaults. Only meaningful when the sink is
+    local; `get_config` routes there so a missing key never blocks the offline dashboard."""
+    import secrets
+
+    env = dict(os.environ if env is None else env)
+    for key, value in _LOCAL_DEFAULTS.items():
+        env.setdefault(key, value)
+    env.setdefault("WS_TOKEN_SECRET", secrets.token_hex(16))
+    env["SESSION_SINK"] = "local"
+    return load_config(env, required=())
+
+
 @lru_cache(maxsize=1)
 def get_config() -> VoiceConfig:
     from dotenv import load_dotenv
 
     load_dotenv()
+    if (os.environ.get("SESSION_SINK") or "firestore").lower() == "local":
+        return local_config()
     return load_config()

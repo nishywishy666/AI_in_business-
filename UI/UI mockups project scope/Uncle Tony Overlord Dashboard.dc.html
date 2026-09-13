@@ -1,0 +1,1279 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/nocturne-3df42377-c4f5-43bf-8ccd-724d903ef744/styles.css">
+  <script src="_ds/nocturne-3df42377-c4f5-43bf-8ccd-724d903ef744/_ds_bundle.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&amp;family=Archivo:wdth,wght@75..100,400..900&amp;display=swap" rel="stylesheet">
+  <style>
+    /* Uncle Tony brand retheme — cream ground, deep teal ink/accent, amber highlight, matching uncletony.com.au. */
+    :root{
+      --color-bg:#f5efdf; --color-surface:#ffffff; --color-text:#1f4a45;
+      --color-accent:#1f4a45; --color-accent-2:#1f4a45;
+      --color-divider: color-mix(in srgb, #1f4a45 18%, transparent);
+      --color-neutral-100:#fbf8ef; --color-neutral-200:#f0ebd9; --color-neutral-300:#e0d9c0;
+      --color-neutral-400:#c3bb9d; --color-neutral-500:#a29878; --color-neutral-600:#7d7558;
+      --color-neutral-700:#5a5340; --color-neutral-800:#3a3629; --color-neutral-900:#241f18;
+      --color-accent-100:#fdf3df; --color-accent-200:#fbe4b3; --color-accent-300:#f6cd7e;
+      --color-accent-400:#eeb355; --color-accent-500:#dd9a3a; --color-accent-600:#b87b28;
+      --color-accent-700:#8f5e1e; --color-accent-800:#5f3f15; --color-accent-900:#382510;
+      --color-accent-2-100:#fdf3df; --color-accent-2-200:#fbe4b3; --color-accent-2-300:#f6cd7e;
+      --color-accent-2-400:#eeb355; --color-accent-2-500:#dd9a3a; --color-accent-2-600:#b87b28;
+      --color-accent-2-700:#8f5e1e; --color-accent-2-800:#5f3f15; --color-accent-2-900:#382510;
+      --font-heading:"Outfit", system-ui, sans-serif; --font-heading-weight:600;
+      --font-body:"Outfit", system-ui, sans-serif;
+      --shadow-sm: 0 1px 2px rgba(31,74,69,.06), 0 1px 3px rgba(31,74,69,.08);
+      --shadow-md: 0 1px 2px rgba(31,74,69,.06), 0 8px 20px rgba(31,74,69,.10);
+      --shadow-lg: 0 1px 2px rgba(31,74,69,.06), 0 16px 36px rgba(31,74,69,.14);
+      --radius-md:14px; --radius-lg:22px;
+    }
+    body{margin:0}
+    h1,h2,h3,h4{letter-spacing:-.01em;font-family:"Archivo","Outfit",system-ui,sans-serif;font-weight:800;font-stretch:82%}
+    .btn{border-radius:999px}
+    .btn-primary{background:var(--color-accent);color:var(--color-neutral-100);border-color:var(--color-accent)}
+    .btn-primary:hover{background:#2a5a54}
+    .btn-primary:active{background:#173b37}
+    .btn-secondary{border-color:var(--color-accent);color:var(--color-accent)}
+    .btn-secondary:hover{background:color-mix(in srgb, var(--color-accent) 8%, transparent)}
+    .checker-strip{height:10px;background:radial-gradient(circle at 5px 10px, var(--color-accent) 4px, transparent 4.3px) 0 0/10px 10px repeat-x}
+    .card{border:1px solid var(--color-divider)}
+    .table thead tr, .table tbody tr{background-image:none !important;border-bottom:1px solid var(--color-divider)}
+    .scrollpane::-webkit-scrollbar{width:8px}
+    .scrollpane::-webkit-scrollbar-thumb{background:var(--color-neutral-300);border-radius:4px}
+    a{color:var(--color-accent)}
+    a:hover{color:#2a5a54}
+    .mkt-scroll{max-height:80vh;overflow-y:auto;overflow-x:hidden;padding-right:8px}
+    .mkt-chat{height:auto;min-height:420px}
+    @container (min-width:900px){
+      .mkt-chat{height:calc(100vh - 240px)}
+    }
+    .seg-dark .seg-opt{color:var(--color-neutral-300) !important;background:transparent !important}
+    .seg-dark .seg-opt:has(input:checked){background:rgba(255,255,255,.18) !important;color:#fff !important}
+    @keyframes overlord-bob{
+      0%{transform:translate(0,0) rotate(0deg) scale(1)}
+      15%{transform:translate(-3px,-4px) rotate(-7deg) scale(1.04)}
+      30%{transform:translate(3px,-6px) rotate(6deg) scale(1.04)}
+      45%{transform:translate(4px,-2px) rotate(3deg) scale(1)}
+      60%{transform:translate(-2px,-5px) rotate(-5deg) scale(1.03)}
+      75%{transform:translate(-4px,-1px) rotate(-2deg) scale(1)}
+      90%{transform:translate(2px,-3px) rotate(4deg) scale(1.02)}
+      100%{transform:translate(0,0) rotate(0deg) scale(1)}
+    }
+  </style>
+</helmet>
+<div style="display:flex;min-height:100vh;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)">
+
+  <div style="{{ sidebarStyle }}">
+    <div style="position:relative;padding:14px 12px">
+      <div style="display:flex;flex-direction:column;gap:8px;padding:6px;border-radius:var(--radius-md);cursor:pointer" onClick="{{ toggleProfileMenu }}">
+        <sc-if value="{{ sidebarCollapsed }}">
+          <img src="assets/uncle-tony-mascot.svg" style="height:36px;width:auto;flex:none">
+        </sc-if>
+        <sc-if value="{{ !sidebarCollapsed }}">
+          <img src="assets/uncle-tony-logo.png" alt="Uncle Tony" style="width:100%;height:54px;object-fit:contain;object-position:left;display:block">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="font-size:11px;color:var(--color-neutral-400);white-space:nowrap;flex:1">Oakleigh, VIC</div>
+            <span style="color:var(--color-neutral-400);font-size:10px;flex:none">{{ profileChevron }}</span>
+          </div>
+        </sc-if>
+      </div>
+      <sc-if value="{{ profileMenuOpen }}">
+        <div class="card elev-lg" style="position:absolute;left:12px;right:12px;top:76px;z-index:30;padding:6px">
+          <sc-for list="{{ profileMenuItems }}" as="pm" hint-placeholder-count="3">
+            <div style="{{ pm.style }}" onClick="{{ pm.onClick }}">{{ pm.label }}</div>
+          </sc-for>
+        </div>
+      </sc-if>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:2px;padding:8px;flex:1">
+      <div style="{{ navOverviewStyle }}" onClick="{{ navOverviewClick }}">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" style="flex:none"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1"></rect><rect x="9" y="1.5" width="5.5" height="5.5" rx="1"></rect><rect x="1.5" y="9" width="5.5" height="5.5" rx="1"></rect><rect x="9" y="9" width="5.5" height="5.5" rx="1"></rect></svg>
+        <sc-if value="{{ !sidebarCollapsed }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Overview</span></sc-if>
+      </div>
+      <div style="{{ navCallsStyle }}" onClick="{{ navCallsClick }}">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" style="flex:none"><path d="M3.2 2.3c0-.5.4-.9.9-.9h1.2c.4 0 .8.3.9.7l.5 1.9c.1.3 0 .7-.3.9l-1 .9c.8 1.7 2.1 3 3.8 3.8l.9-1c.2-.3.6-.4.9-.3l1.9.5c.4.1.7.5.7.9v1.2c0 .5-.4.9-.9.9C7.7 12.7 3.3 8.3 3.3 3.2"></path></svg>
+        <sc-if value="{{ !sidebarCollapsed }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Voice AI calls</span></sc-if>
+      </div>
+      <div style="{{ navMarketingStyle }}" onClick="{{ navMarketingClick }}">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" style="flex:none"><polyline points="1.5,11 5.5,7 8,9.5 14.5,3"></polyline><polyline points="10.5,3 14.5,3 14.5,7"></polyline></svg>
+        <sc-if value="{{ !sidebarCollapsed }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Marketing</span></sc-if>
+      </div>
+      <div style="{{ navCallbacksStyle }}" onClick="{{ navCallbacksClick }}">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" style="flex:none"><path d="M8 1.8c-2 0-3.5 1.6-3.5 3.6v2.3c0 .6-.2 1.2-.6 1.7l-.5.7c-.3.4 0 1 .5 1h8.2c.5 0 .8-.6.5-1l-.5-.7c-.4-.5-.6-1.1-.6-1.7V5.4c0-2-1.5-3.6-3.5-3.6z"></path><path d="M6.3 13.2a1.7 1.7 0 0 0 3.4 0"></path></svg>
+        <sc-if value="{{ !sidebarCollapsed }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Callbacks</span></sc-if>
+      </div>
+      <div style="{{ navAnalyticsStyle }}" onClick="{{ navAnalyticsClick }}">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" style="flex:none"><line x1="2" y1="14" x2="14" y2="14"></line><rect x="3" y="8.5" width="2.2" height="5" fill="currentColor" stroke="none"></rect><rect x="6.8" y="5.3" width="2.2" height="8.2" fill="currentColor" stroke="none"></rect><rect x="10.6" y="2.6" width="2.2" height="10.9" fill="currentColor" stroke="none"></rect></svg>
+        <sc-if value="{{ !sidebarCollapsed }}"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Analytics</span></sc-if>
+      </div>
+    </div>
+
+    <div style="padding:8px">
+      <button class="btn btn-secondary" style="width:100%;justify-content:{{ collapseJustify }};border-color:var(--color-neutral-400);color:var(--color-neutral-100)" onClick="{{ toggleSidebar }}">{{ collapseGlyph }}<sc-if value="{{ !sidebarCollapsed }}"><span style="margin-left:6px">Collapse</span></sc-if></button>
+    </div>
+  </div>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 28px;border-bottom:1px solid var(--color-divider)">
+      <div>
+        <h3 style="margin:0;text-transform:uppercase">{{ pageTitle }}</h3>
+        <div style="font-size:12px;color:var(--color-neutral-400)">{{ pageSubtitle }}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="position:relative"><input class="input" placeholder="Search…" style="width:200px;padding-left:32px"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="var(--color-neutral-500)" stroke-width="1.4" style="position:absolute;left:10px;top:11px"><circle cx="6.8" cy="6.8" r="4.3"></circle><line x1="10" y1="10" x2="13.5" y2="13.5"></line></svg></div>
+        <button class="btn btn-secondary btn-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.8c-2 0-3.5 1.6-3.5 3.6v2.3c0 .6-.2 1.2-.6 1.7l-.5.7c-.3.4 0 1 .5 1h8.2c.5 0 .8-.6.5-1l-.5-.7c-.4-.5-.6-1.1-.6-1.7V5.4c0-2-1.5-3.6-3.5-3.6z"></path><path d="M6.3 13.2a1.7 1.7 0 0 0 3.4 0"></path></svg></button>
+        <span class="tag tag-outline" style="white-space:nowrap;flex:none">Live prototype</span>
+      </div>
+    </div>
+    <div class="checker-strip"></div>
+
+    <div class="scrollpane" style="flex:1;overflow:auto;padding:28px;padding-right:100px;padding-bottom:100px">
+
+      <!-- ============ OVERVIEW ============ -->
+      <sc-if value="{{ isOverview }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:11px;color:var(--color-neutral-500)">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-500);flex:none"></span>
+          <span>Last refreshed {{ freshness.asOf }} · {{ freshness.timezone }} · refreshes every {{ freshness.staleAfterMinutes }} min</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:24px">
+          <div class="card elev-sm">
+            <div style="width:36px;height:36px;border-radius:10px;background:color-mix(in srgb, var(--color-accent-500) 16%, transparent);color:var(--color-accent-600);display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2" y="3" width="12" height="11" rx="1.5"></rect><line x1="2" y1="6.5" x2="14" y2="6.5"></line><path d="M5.5 10l1.5 1.5L11 8"></path></svg>
+            </div>
+            <div style="margin-top:10px">
+              <div class="card-kicker">Bookings &amp; covers</div>
+              <div style="font-family:var(--font-heading);font-size:24px;font-weight:500">3 <span style="font-size:14px;color:var(--color-neutral-500);font-family:var(--font-body)">/ 12 covers</span></div>
+              <div class="card-meta">{{ impact.bookings.compare }}</div>
+            </div>
+          </div>
+          <div class="card elev-sm">
+            <div style="width:36px;height:36px;border-radius:10px;background:color-mix(in srgb, var(--color-accent) 14%, transparent);color:var(--color-accent);display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3.2 2.3c0-.5.4-.9.9-.9h1.2c.4 0 .8.3.9.7l.5 1.9c.1.3 0 .7-.3.9l-1 .9c.8 1.7 2.1 3 3.8 3.8l.9-1c.2-.3.6-.4.9-.3l1.9.5c.4.1.7.5.7.9v1.2c0 .5-.4.9-.9.9C7.7 12.7 3.3 8.3 3.3 3.2"></path></svg>
+            </div>
+            <div style="margin-top:10px">
+              <div class="card-kicker">Calls handled</div>
+              <div style="font-family:var(--font-heading);font-size:24px;font-weight:500">8</div>
+              <div class="card-meta">{{ impact.calls.compare }}</div>
+            </div>
+          </div>
+          <div class="card elev-sm">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--color-neutral-200);color:var(--color-neutral-700);display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.8c-2 0-3.5 1.6-3.5 3.6v2.3c0 .6-.2 1.2-.6 1.7l-.5.7c-.3.4 0 1 .5 1h8.2c.5 0 .8-.6.5-1l-.5-.7c-.4-.5-.6-1.1-.6-1.7V5.4c0-2-1.5-3.6-3.5-3.6z"></path><path d="M6.3 13.2a1.7 1.7 0 0 0 3.4 0"></path></svg>
+            </div>
+            <div style="margin-top:10px">
+              <div class="card-kicker">Containment</div>
+              <div style="font-family:var(--font-heading);font-size:24px;font-weight:500">75%</div>
+              <div class="card-meta">6 of 8 calls, no callback requested</div>
+            </div>
+          </div>
+          <div class="card elev-sm">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--color-neutral-200);color:var(--color-neutral-700);display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 16 16" width="17" height="17" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.3"></circle><path d="M8 4.6v3.4l2.4 1.4"></path></svg>
+            </div>
+            <div style="margin-top:10px">
+              <div class="card-kicker">Outside opening hours</div>
+              <div style="font-family:var(--font-heading);font-size:24px;font-weight:500">1 <span style="font-size:14px;color:var(--color-neutral-500);font-family:var(--font-body)">/ 13%</span></div>
+              <div class="card-meta">started outside 7:30am–2:30pm Mon–Fri</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.4fr minmax(0,1fr);gap:16px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card elev-sm" style="background:#0e2b27;border-color:#0e2b27;color:var(--color-neutral-100)">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+                <div class="card-title" style="color:var(--color-neutral-100)">Call volume</div>
+                <div class="seg seg-dark" style="font-size:11px;border-color:rgba(255,255,255,.18)">
+                  <label class="seg-opt"><input type="radio" checked="{{ true }}" readOnly="{{ true }}">7D</label>
+                  <label class="seg-opt"><input type="radio">30D</label>
+                </div>
+              </div>
+              <div style="position:relative" onMouseMove="{{ chartMove }}" onMouseLeave="{{ chartLeave }}">
+                <svg viewBox="0 0 600 160" style="width:100%;height:160px;display:block;overflow:visible">
+                  <sc-for list="{{ chartGridX }}" as="gx" hint-placeholder-count="7">
+                    <line x1="{{ gx }}" y1="6" x2="{{ gx }}" y2="140" stroke="rgba(255,255,255,.10)" stroke-dasharray="2,4" stroke-width="1"></line>
+                  </sc-for>
+                  <path d="{{ chartAreaPath }}" fill="url(#chartFade)"></path>
+                  <path d="{{ chartLinePath }}" fill="none" stroke="var(--color-neutral-100)" stroke-width="2.5" stroke-linecap="round"></path>
+                  <defs>
+                    <linearGradient id="chartFade" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="var(--color-neutral-100)" stop-opacity="0.14"></stop>
+                      <stop offset="100%" stop-color="var(--color-neutral-100)" stop-opacity="0"></stop>
+                    </linearGradient>
+                  </defs>
+                  <sc-if value="{{ chartHoverPoint }}">
+                    <line x1="{{ chartHoverPoint.x }}" y1="6" x2="{{ chartHoverPoint.x }}" y2="140" stroke="rgba(255,255,255,.35)" stroke-width="1"></line>
+                    <circle cx="{{ chartHoverPoint.x }}" cy="{{ chartHoverPoint.y }}" r="4.5" fill="var(--color-accent-500)" stroke="#0e2b27" stroke-width="2"></circle>
+                  </sc-if>
+                </svg>
+                <sc-if value="{{ chartHoverPoint }}">
+                  <div style="{{ chartHoverPoint.tooltipStyle }}">
+                    <div style="display:flex;align-items:center;gap:7px">
+                      <span style="width:2px;height:22px;background:var(--color-accent-500);border-radius:1px"></span>
+                      <div>
+                        <div style="font-size:11px;color:var(--color-neutral-400)">{{ chartHoverPoint.date }}</div>
+                        <div style="font-size:13px;font-weight:600"><span style="color:var(--color-neutral-400);font-weight:400">Calls&nbsp;</span>{{ chartHoverPoint.value }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+              </div>
+              <div style="display:flex;justify-content:space-between;margin-top:6px">
+                <sc-for list="{{ callVolumeLabels }}" as="lbl" hint-placeholder-count="7">
+                  <span style="font-size:10px;color:var(--color-neutral-400)">{{ lbl }}</span>
+                </sc-for>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.12)">
+                <div style="font-size:12px;color:var(--color-neutral-200)"><span style="color:var(--color-accent-400)">↑ {{ chartDeltaPct }}%</span> vs first day in last 7 days</div>
+                <a href="#" onClick="{{ goCalls }}" style="font-size:12px;color:var(--color-neutral-100)">View report →</a>
+              </div>
+            </div>
+            <div class="card elev-sm">
+              <div class="card-title" style="margin-bottom:4px">Today's calls</div>
+              <table class="table">
+                <thead><tr><th>Time</th><th>Route</th><th>Outcome</th><th>Confidence</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ overviewRecentCalls }}" as="rc" hint-placeholder-count="4">
+                    <tr><td>{{ rc.time }}</td><td>{{ rc.route }}</td><td><span style="{{ rc.tagStyle }}" class="tag">{{ rc.outcome }}</span></td><td>{{ rc.confidence }}%</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+              <a href="#" onClick="{{ goCalls }}" style="font-size:13px">View full call log →</a>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card elev-sm">
+              <div class="card-title" style="margin-bottom:10px">Calls by route</div>
+              <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px">
+                <div style="{{ donutStyle }}">
+                  <div style="{{ donutHoleStyle }}">
+                    <div style="font-family:var(--font-heading);font-size:20px">{{ donutTotal }}</div>
+                    <div style="font-size:10px;color:var(--color-neutral-500)">calls</div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ routeLegend }}" as="rl" hint-placeholder-count="4">
+                  <div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:12px;margin-bottom:3px">
+                      <span style="width:8px;height:8px;border-radius:50%;background:{{ rl.color }};flex:none"></span>
+                      <span style="flex:1;color:var(--color-neutral-600)">{{ rl.label }}</span>
+                      <span>{{ rl.count }} · {{ rl.pct }}%</span>
+                    </div>
+                    <div style="height:4px;border-radius:2px;background:var(--color-neutral-200);overflow:hidden">
+                      <div style="height:100%;width:{{ rl.pct }}%;background:{{ rl.color }}"></div>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+            <div class="card elev-sm">
+              <div class="card-title" style="margin-bottom:6px">Quick actions</div>
+              <sc-for list="{{ quickActions }}" as="qa" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider);cursor:pointer" onClick="{{ qa.onClick }}">
+                  <div style="width:28px;height:28px;border-radius:8px;background:var(--color-neutral-200);color:var(--color-accent);display:flex;align-items:center;justify-content:center;flex:none">{{ qa.icon }}</div>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:13px">{{ qa.label }}</div>
+                    <div style="font-size:11px;color:var(--color-neutral-500);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ qa.sub }}</div>
+                  </div>
+                  <span style="{{ qa.tagStyle }}" class="tag">{{ qa.tag }}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ VOICE AI CALLS ============ -->
+      <sc-if value="{{ isCalls }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px">
+          <sc-for list="{{ voiceOpsTiles }}" as="vt" hint-placeholder-count="5">
+            <div class="card elev-sm" style="padding: 12px 14px; width: 201px; height: 115px">
+              <div class="card-kicker">{{ vt.label }}</div>
+              <div style="font-family:var(--font-heading);font-size:20px;font-weight:500">{{ vt.value }}</div>
+              <div class="card-meta">{{ vt.note }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="seg" style="font-size:12px">
+              <sc-for list="{{ callFilters }}" as="cf" hint-placeholder-count="5">
+                <label class="seg-opt"><input type="radio" checked="{{ cf.active }}" onChange="{{ cf.onSelect }}">{{ cf.label }}</label>
+              </sc-for>
+            </div>
+            <span style="font-size:12px;color:var(--color-neutral-500)">{{ callLogCountLabel }}</span>
+          </div>
+          <sc-if value="{{ speakingCallId }}">
+            <button class="btn btn-secondary" onClick="{{ stopTranscript }}">■ Stop playback</button>
+          </sc-if>
+        </div>
+
+        <div class="card elev-sm" style="padding:0;overflow-x:auto">
+          <table class="table">
+            <thead><tr><th style="width:20px"></th><th>Time</th><th>Duration</th><th>Route</th><th>Outcome</th><th>Confidence</th><th>TTFB</th><th>Cost</th><th style="width:110px">Summary</th></tr></thead>
+            <tbody>
+              <sc-for list="{{ calls }}" as="call" hint-placeholder-count="8">
+                <tr onClick="{{ call.onClick }}" style="cursor:pointer">
+                  <td style="color:var(--color-accent)">{{ call.chevron }}</td>
+                  <td>{{ call.time }}</td>
+                  <td>{{ call.duration }}</td>
+                  <td>{{ call.route }}</td>
+                  <td><span class="tag" style="{{ call.tagStyle }}">{{ call.outcome }}</span></td>
+                  <td>{{ call.confidence }}%</td>
+                  <td style="white-space:nowrap">{{ call.ttfb }} ms</td>
+                  <td>{{ call.cost }}</td>
+                  <td><button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onClick="{{ call.onSummary }}">Summary</button></td>
+                </tr>
+                <sc-if value="{{ call.expanded }}">
+                  <tr><td colspan="9" style="background:var(--color-bg);padding:18px">
+                    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500);margin-bottom:8px">Call metrics</div>
+                    <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:18px">
+                      <sc-for list="{{ call.metrics }}" as="m" hint-placeholder-count="8">
+                        <div style="background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:9px 11px">
+                          <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--color-neutral-500)">{{ m.label }}</div>
+                          <div style="font-size:14px;margin-top:2px">{{ m.value }}</div>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px">
+                      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500)">Transcript</div>
+                      <div style="display:flex;gap:8px">
+                        <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onClick="{{ call.onPlay }}">{{ call.playLabel }}</button>
+                        <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onClick="{{ call.onCopy }}">Copy text</button>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px;max-width:760px">
+                      <sc-for list="{{ call.transcript }}" as="line" hint-placeholder-count="4">
+                        <div style="display:flex;align-items:flex-start;gap:10px">
+                          <span style="font-size:11px;color:var(--color-neutral-500);width:34px;flex:none;padding-top:3px">{{ line.ts }}</span>
+                          <span style="{{ line.speakerStyle }}" class="tag">{{ line.speaker }}</span>
+                          <span style="font-size:13px;opacity:.9;flex:1">{{ line.text }}</span>
+                          <button class="btn btn-ghost" style="font-size:11px;padding:2px 8px;flex:none" onClick="{{ line.onSpeak }}">▶</button>
+                        </div>
+                      </sc-for>
+                    </div>
+                    <div style="font-size:11px;color:var(--color-neutral-500);margin-top:12px">Playback is read aloud from the stored transcript, not the original caller audio.</div>
+                  </td></tr>
+                </sc-if>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+
+        <sc-if value="{{ summaryModalCall }}">
+          <div class="dialog-backdrop" style="backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)" onClick="{{ closeSummaryModal }}">
+            <div class="dialog" onClick="{{ stopPropagation }}" style="width:min(480px,100%)">
+              <div class="dialog-title">Call summary · {{ summaryModalCall.time }}</div>
+              <div class="dialog-body">
+                <div style="display:flex;gap:8px;margin-bottom:12px">
+                  <span class="tag tag-neutral">{{ summaryModalCall.route }}</span>
+                  <span class="tag" style="{{ summaryModalCall.tagStyle }}">{{ summaryModalCall.outcome }}</span>
+                </div>
+                <p style="font-size:13px;line-height:1.5;opacity:.9">{{ summaryModalCall.summaryText }}</p>
+              </div>
+              <div class="dialog-actions">
+                <button class="btn btn-secondary" onClick="{{ closeSummaryModal }}">Close</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ BUSINESS SETUP ============ -->
+      <sc-if value="{{ isSetup }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;max-width:1100px">
+          <div class="card elev-sm">
+            <div class="card-title">Menu</div>
+            <p class="card-body">Uploaded once, re-cached automatically. Update any time and the Voice AI picks up the new version within seconds.</p>
+            <sc-if value="{{ !menuUploaded }}">
+              <div style="border:1px dashed var(--color-divider);border-radius:var(--radius-md);padding:28px;text-align:center">
+                <div style="font-size:13px;color:var(--color-neutral-400);margin-bottom:10px">Drop a PDF of the menu, or</div>
+                <button class="btn btn-primary" onClick="{{ uploadMenu }}">Upload menu.pdf</button>
+              </div>
+            </sc-if>
+            <sc-if value="{{ menuUploaded }}">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+                <span class="tag tag-accent">Cached ✓</span>
+                <span style="font-size:12px;color:var(--color-neutral-500)">Parsed into 3 columns · last updated just now</span>
+              </div>
+              <table class="table">
+                <thead><tr><th>Sandwich</th><th>Ingredients</th><th>Price</th></tr></thead>
+                <tbody>
+                  <sc-for list="{{ menuRows }}" as="row" hint-placeholder-count="5">
+                    <tr><td>{{ row.name }}</td><td style="color:var(--color-neutral-400)">{{ row.ingredients }}</td><td>{{ row.price }}</td></tr>
+                  </sc-for>
+                </tbody>
+              </table>
+              <button class="btn btn-secondary" style="margin-top:10px" onClick="{{ uploadMenu }}">Replace menu</button>
+            </sc-if>
+          </div>
+
+          <div class="card elev-sm">
+            <div class="card-title">Research packet</div>
+            <p class="card-body">The research agent pulled this from public sources. Confirm before it's stored and used to answer calls.</p>
+            <div style="display:flex;flex-direction:column;gap:0">
+              <sc-for list="{{ packetFields }}" as="f" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                  <span style="font-size:13px;color:var(--color-neutral-400)">{{ f.label }}</span>
+                  <span style="font-size:13px;text-align:right">{{ f.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ !packetConfirmed }}">
+              <button class="btn btn-primary btn-block" onClick="{{ confirmPacket }}">Confirm &amp; store packet</button>
+            </sc-if>
+            <sc-if value="{{ packetConfirmed }}">
+              <div style="margin-top:10px"><span class="tag tag-accent">Stored ✓ — updates weekly</span></div>
+            </sc-if>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ PROFILE SETTINGS ============ -->
+      <sc-if value="{{ isProfile }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,340px);gap:16px;align-items:start;max-width:1100px">
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card elev-sm">
+              <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+                <div style="height:38px;background:var(--color-accent);border-radius:8px;flex:none;display:flex;align-items:center;justify-content:center;padding:6px 10px">
+                  <img src="assets/uncle-tony-logo.png" alt="Uncle Tony" style="height:100%;width:auto;object-fit:contain">
+                </div>
+                <div style="min-width:0;flex:1">
+                  <div style="font-family:var(--font-heading);font-size:18px">Tony Marino</div>
+                  <div style="font-size:12px;color:var(--color-neutral-500)">Owner · Oakleigh VIC</div>
+                </div>
+                <button class="btn btn-secondary">Edit</button>
+              </div>
+              <sc-for list="{{ profileFields }}" as="pf" hint-placeholder-count="5">
+                <div style="display:flex;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--color-divider)">
+                  <span style="font-size:13px;color:var(--color-neutral-500)">{{ pf.label }}</span>
+                  <span style="font-size:13px;text-align:right">{{ pf.value }}</span>
+                </div>
+              </sc-for>
+            </div>
+
+            <div class="card elev-sm">
+              <div class="card-title">Notifications</div>
+              <p class="card-body">Choose what Uncle Tony gets pinged about.</p>
+              <sc-for list="{{ notifRows }}" as="nr" hint-placeholder-count="3">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)">
+                  <div style="min-width:0">
+                    <div style="font-size:13px">{{ nr.label }}</div>
+                    <div style="font-size:11px;color:var(--color-neutral-500)">{{ nr.sub }}</div>
+                  </div>
+                  <div onClick="{{ nr.onToggle }}" style="{{ nr.trackStyle }}"><div style="{{ nr.knobStyle }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card elev-sm">
+              <div class="card-title">Business context</div>
+              <p class="card-body">The menu and knowledge the agents answer from.</p>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="tag tag-accent">Cached ✓</span><span style="color:var(--color-neutral-500)">Menu · 5 items</span></div>
+                <div style="display:flex;align-items:center;gap:8px;font-size:12px"><span class="tag tag-accent">Stored ✓</span><span style="color:var(--color-neutral-500)">Research packet · updates weekly</span></div>
+              </div>
+              <button class="btn btn-primary btn-block" onClick="{{ goSetup }}">Open business context</button>
+            </div>
+            <div class="card elev-sm">
+              <div class="card-title">Plan &amp; usage</div>
+              <div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 10px">
+                <span style="font-family:var(--font-heading);font-size:20px">Local Legend</span>
+                <span style="font-size:12px;color:var(--color-neutral-500)">$149/mo</span>
+              </div>
+              <div style="font-size:12px;color:var(--color-neutral-500);margin-bottom:6px">412 of 1,000 included call minutes used</div>
+              <div style="height:6px;border-radius:3px;background:var(--color-neutral-200);overflow:hidden"><div style="height:100%;width:41%;background:var(--color-accent)"></div></div>
+              <a href="#" style="font-size:13px;display:inline-block;margin-top:10px">Manage billing →</a>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ MARKETING ============ -->
+      <sc-if value="{{ isMarketing }}">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;align-items:start;container-type:inline-size">
+          <div class="scrollpane mkt-scroll">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px;flex-wrap:wrap">
+              <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+                <button style="{{ pfAll.style }}" onClick="{{ pfAll.onClick }}" title="All">
+                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="9" y="1.5" width="5.5" height="5.5" rx="1"/><rect x="1.5" y="9" width="5.5" height="5.5" rx="1"/><rect x="9" y="9" width="5.5" height="5.5" rx="1"/></svg>
+                </button>
+                <button style="{{ pfInstagram.style }}" onClick="{{ pfInstagram.onClick }}" title="Instagram">
+                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="1.5" y="1.5" width="13" height="13" rx="4"/><circle cx="8" cy="8" r="3.4"/><circle cx="11.6" cy="4.4" r="0.6" fill="currentColor" stroke="none"/></svg>
+                </button>
+                <button style="{{ pfTiktok.style }}" onClick="{{ pfTiktok.onClick }}" title="TikTok">
+                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M9 1.5v8.3a2.4 2.4 0 1 1-2.1-2.38"/><path d="M9 1.5c.3 1.9 1.7 3.3 3.5 3.5"/></svg>
+                </button>
+                <button style="{{ pfFacebook.style }}" onClick="{{ pfFacebook.onClick }}" title="Facebook">
+                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4"><circle cx="8" cy="8" r="6.3"/><path d="M9.4 14V9.2h1.4l.2-1.8H9.4V6.2c0-.5.15-.85.85-.85h.9V3.7a8 8 0 0 0-1.3-.1c-1.3 0-2.2.8-2.2 2.25v1.55H6.2v1.8h1.45V14"/></svg>
+                </button>
+                <button style="{{ pfShorts.style }}" onClick="{{ pfShorts.onClick }}" title="YouTube Shorts">
+                  <svg viewBox="0 0 16 16" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="2.5" y="1.5" width="11" height="13" rx="3.2"/><path d="M6.7 6.3l3 1.7-3 1.7z" fill="currentColor" stroke="none"/></svg>
+                </button>
+              </div>
+              <div style="display:flex;align-items:center;gap:10px;padding-left:20px;border-left:1px solid var(--color-divider)">
+                <div class="seg" style="width:auto;display:flex;font-size:11px">
+                  <label class="seg-opt" style="white-space:normal;padding:4px 10px"><input type="radio" checked="{{ trendFilterNiche }}" onChange="{{ setTrendNiche }}">Trending for you</label>
+                  <label class="seg-opt" style="white-space:normal;padding:4px 10px"><input type="radio" checked="{{ trendFilterGlobal }}" onChange="{{ setTrendGlobal }}">Trending globally</label>
+                </div>
+              </div>
+            </div>
+            <div style="margin-bottom:14px">
+              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>
+            </div>
+            <sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">
+              <div style="margin-bottom:18px">
+                <div class="card-kicker" style="margin-bottom:8px">{{ pg.platform }} · {{ pg.count }}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px">
+                  <sc-for list="{{ pg.items }}" as="t" hint-placeholder-count="2">
+                    <div class="card elev-sm">
+                      <div style="height:84px;border-radius:var(--radius-sm);background:var(--color-neutral-900);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-neutral-600)">video thumbnail</div>
+                      <div style="display:flex;gap:6px;align-items:center">
+                        <span class="tag tag-neutral">{{ t.platform }}</span>
+                        <span style="font-size:11px;color:var(--color-neutral-500)">score {{ t.score }}</span>
+                      </div>
+                      <div class="card-title" style="font-size:15px">{{ t.title }}</div>
+                      <div class="card-body">{{ t.why }}</div>
+                      <div style="display:flex;gap:8px">
+                        <button class="btn btn-secondary" style="{{ t.likeStyle }}" onClick="{{ t.onLike }}">{{ t.likeGlyph }} Like</button>
+                        <button class="btn btn-secondary" style="{{ t.saveStyle }}" onClick="{{ t.onSave }}">{{ t.saveGlyph }} Save</button>
+                      </div>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+            <button class="btn btn-ghost" style="margin-top:14px" onClick="{{ showMoreTrends }}">{{ showMoreLabel }}</button>
+          </div>
+
+          <div style="display:flex;flex-direction:column;gap:16px">
+            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column">
+              <div class="card-title" style="font-size:15px">Marketing agent</div>
+              <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:10px;margin:8px 0">
+                <sc-for list="{{ marketingChat }}" as="m" hint-placeholder-count="2">
+                  <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>
+                </sc-for>
+              </div>
+              <div style="display:flex;gap:6px">
+                <input class="input" placeholder="Ask what's trending, or why…" value="{{ chatDraft }}" onInput="{{ setChatDraft }}" onKeyDown="{{ chatKeyDown }}">
+                <button class="btn btn-primary btn-icon" onClick="{{ sendChat }}">→</button>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:24px;justify-content:center;padding:16px 0">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer" onClick="{{ openSavesModal }}">
+                <div class="card-title" style="font-size:13px">My saves</div>
+                <div style="color:var(--color-accent);display:flex;align-items:center;justify-content:center">
+                  <svg viewBox="0 0 16 16" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 2h8v12l-4-3-4 3z" style-hover="fill:currentColor"/></svg>
+                </div>
+                <div style="font-size:11px;color:var(--color-neutral-500)">{{ savedCount }} saved</div>
+              </div>
+              <div style="display:flex;flex-direction:column;align-items:center;gap:10px;cursor:pointer" onClick="{{ openLikesModal }}">
+                <div class="card-title" style="font-size:13px">My likes</div>
+                <div style="color:var(--color-accent-500);display:flex;align-items:center;justify-content:center">
+                  <svg viewBox="0 0 16 16" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 13.5s-5.5-3.3-5.5-7.2A3 3 0 0 1 8 4.6a3 3 0 0 1 5.5 1.7c0 3.9-5.5 7.2-5.5 7.2z" style-hover="fill:currentColor"/></svg>
+                </div>
+                <div style="font-size:11px;color:var(--color-neutral-500)">{{ likedCount }} liked</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <sc-if value="{{ savedLikedModalOpen }}">
+          <div class="dialog-backdrop" onClick="{{ closeSavedLikedModal }}">
+            <div class="dialog" onClick="{{ stopPropagation }}" style="width:min(640px,100%)">
+              <div class="dialog-title">{{ savedLikedModalTitle }}</div>
+              <div class="dialog-body">
+                <sc-if value="{{ savedLikedTrends.length }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px">
+                    <sc-for list="{{ savedLikedTrends }}" as="sl" hint-placeholder-count="2">
+                      <div class="card elev-sm">
+                        <div style="height:70px;border-radius:var(--radius-sm);background:var(--color-neutral-900);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-neutral-600)">video thumbnail</div>
+                        <div style="display:flex;gap:6px;align-items:center">
+                          <span class="tag tag-neutral">{{ sl.platform }}</span>
+                          <span style="font-size:11px;color:var(--color-neutral-500)">score {{ sl.score }}</span>
+                        </div>
+                        <div class="card-title" style="font-size:14px">{{ sl.title }}</div>
+                      </div>
+                    </sc-for>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ !savedLikedTrends.length }}">
+                  <p style="font-size:13px;color:var(--color-neutral-500)">{{ savedLikedEmptyLabel }}</p>
+                </sc-if>
+              </div>
+              <div class="dialog-actions">
+                <button class="btn btn-secondary" onClick="{{ closeSavedLikedModal }}">Close</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ scriptModalTrend }}">
+          <div class="dialog-backdrop" onClick="{{ closeScriptModal }}">
+            <div class="dialog" onClick="{{ stopPropagation }}" style="width:min(560px,100%)">
+              <div class="dialog-title">{{ scriptModalTrend.title }}</div>
+              <div class="dialog-body">
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500);margin:10px 0 6px">Three angles</div>
+                <sc-for list="{{ scriptModalTrend.angles }}" as="a" hint-placeholder-count="3">
+                  <div style="padding:8px 0;border-bottom:1px solid var(--color-divider);font-size:13px">{{ a }}</div>
+                </sc-for>
+                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500);margin:14px 0 6px">Filming guide</div>
+                <p style="font-size:13px;opacity:.85">{{ scriptModalTrend.guide }}</p>
+                <div style="font-size:12px;color:var(--color-neutral-500);margin-top:8px">Draft expires in 14 days unless saved to your library.</div>
+              </div>
+              <div class="dialog-actions">
+                <button class="btn btn-secondary" onClick="{{ closeScriptModal }}">Close</button>
+                <button class="btn btn-primary" onClick="{{ saveScriptToLibrary }}">Save to library</button>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- ============ CALLBACKS ============ -->
+      <sc-if value="{{ isCallbacks }}">
+        <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start">
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <div class="card-title" style="margin-bottom:2px">Reply To:</div>
+            <sc-for list="{{ callbacks }}" as="cb" hint-placeholder-count="4">
+              <div class="card elev-sm" style="flex-direction:column;align-items:stretch;gap:10px">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:14px;font-family:var(--font-heading)">{{ cb.name }}</span>
+                  <span style="font-size:12px;color:var(--color-neutral-500)">{{ cb.number }}</span>
+                  <span class="tag {{ cb.priorityTagClass }}" style="white-space:nowrap;flex:none">{{ cb.priority }}</span>
+                </div>
+                <div>
+                  <div style="font-size:13px;opacity:.85">{{ cb.question }}</div>
+                  <div style="font-size:11px;color:var(--color-neutral-500);margin-top:4px">{{ cb.time }}</div>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span class="tag {{ cb.statusTagClass }}" style="white-space:nowrap;flex:none">{{ cb.status }}</span>
+                  <sc-if value="{{ cb.showDoneButton }}"><button class="btn btn-secondary" style="white-space:nowrap;flex:none" onClick="{{ cb.onMarkDone }}">Mark done</button></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:8px">Questions to clarify</div>
+            <div class="card elev-sm" data-comment-anchor="e6b2c596:450">
+              <div class="card-title">Questions it couldn't answer</div>
+              <p class="card-body">Grouped by question, most-asked first. Unreviewed first.</p>
+            <sc-for list="{{ unansweredQuestions }}" as="q" hint-placeholder-count="3">
+              <div style="padding:12px 0;border-bottom:1px solid var(--color-divider)">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+                  <div style="min-width:0">
+                    <div style="font-size:13px">{{ q.text }}</div>
+                    <div style="font-size:11px;color:var(--color-neutral-500);margin-top:2px">{{ q.evidence }} distinct calls · last asked {{ q.lastAsked }}</div>
+                  </div>
+                  <span style="{{ q.statusStyle }}" class="tag">{{ q.statusLabel }}</span>
+                </div>
+                <sc-if value="{{ q.pending }}">
+                  <div style="display:flex;gap:8px;margin-top:8px">
+                    <button class="btn btn-secondary" style="font-size:11px;padding:4px 10px" onClick="{{ q.onApprove }}">Approve</button>
+                    <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px" onClick="{{ q.onDismiss }}">Dismiss</button>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-for>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- ============ ANALYTICS (Impact / Voice Ops / Insights) ============ -->
+      <sc-if value="{{ isAnalytics }}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+          <div class="seg" style="font-size:12px">
+            <sc-for list="{{ analyticsTabs }}" as="at" hint-placeholder-count="3">
+              <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ at.active }}" onChange="{{ at.onSelect }}">{{ at.label }}</label>
+            </sc-for>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="seg" style="font-size:12px">
+              <sc-for list="{{ periodOptions }}" as="po" hint-placeholder-count="3">
+                <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ po.active }}" onChange="{{ po.onSelect }}">{{ po.label }}</label>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px;font-size:11px;color:var(--color-neutral-500)">
+          <span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-500);flex:none"></span>
+          <span>Last refreshed {{ freshness.asOf }} · {{ freshness.timezone }} · stale after {{ freshness.staleAfterMinutes }} min · <span style="color:var(--color-accent-600)">Demo data</span></span>
+        </div>
+
+        <sc-if value="{{ isImpactTab }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+            <sc-for list="{{ impactTiles }}" as="it" hint-placeholder-count="4">
+              <div class="card elev-sm">
+                <div class="card-kicker">{{ it.kicker }}</div>
+                <div style="font-family:var(--font-heading);font-size:24px;font-weight:500">{{ it.headline }}</div>
+                <div class="card-meta">{{ it.sub }}</div>
+              </div>
+            </sc-for>
+          </div>
+          <p style="font-size:12px;color:var(--color-neutral-500);margin-top:14px;max-width:640px">Financial estimates (net saving, labour cost avoided, AI cost per call) are intentionally left out until measured cost data is connected — showing assumption-based dollar figures here would overstate what's proven.</p>
+        </sc-if>
+
+        <sc-if value="{{ isVoiceOpsTab }}">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+            <sc-for list="{{ voiceOpsBandTiles }}" as="vt" hint-placeholder-count="8">
+              <div class="card elev-sm">
+                <div class="card-kicker">{{ vt.tier }} · {{ vt.label }}</div>
+                <div style="font-family:var(--font-heading);font-size:22px;font-weight:500">{{ vt.value }}</div>
+                <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
+                  <span style="{{ vt.bandStyle }}">{{ vt.bandIcon }} {{ vt.bandWord }}</span>
+                </div>
+                <div class="card-meta" style="margin-top:4px">{{ vt.note }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ isInsightsTab }}">
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start">
+            <div class="card elev-sm">
+              <div class="card-title">Open callbacks — currently open</div>
+              <div class="card-meta" style="margin-bottom:8px">Oldest wait: {{ oldestCallbackWait }}</div>
+              <sc-for list="{{ openCallbacksList }}" as="oc" hint-placeholder-count="2">
+                <div style="display:flex;justify-content:space-between;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-divider);font-size:12px">
+                  <span>{{ oc.name }}</span><span style="color:var(--color-neutral-500)">{{ oc.wait }}</span>
+                </div>
+              </sc-for>
+            </div>
+            <div class="card elev-sm">
+              <div class="card-title">Why calls went to a person</div>
+              <sc-for list="{{ handoffReasonBars }}" as="hr" hint-placeholder-count="3">
+                <div style="margin-bottom:8px">
+                  <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px"><span>{{ hr.label }}</span><span style="color:var(--color-neutral-500)">{{ hr.count }}</span></div>
+                  <div style="height:6px;border-radius:3px;background:var(--color-neutral-200);overflow:hidden"><div style="height:100%;width:{{ hr.pct }}%;background:{{ hr.color }}"></div></div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+    </div>
+  </div>
+
+  <!-- Overlord bubble -->
+  <div style="position:fixed;bottom:24px;right:24px;z-index:40">
+    <sc-if value="{{ overlordOpen }}">
+      <div class="card elev-lg" style="width:340px;height:440px;display:flex;flex-direction:column;margin-bottom:12px;position:absolute;bottom:64px;right:0">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+          <div style="width:28px;height:28px;border-radius:50%;overflow:hidden;flex:none;background:var(--color-neutral-900)"><img src="assets/uncle-tony-mascot.svg" style="width:100%;height:100%;object-fit:cover"></div>
+          <div>
+            <div class="card-title" style="font-size:14px">Overlord</div>
+            <div style="font-size:11px;color:var(--color-neutral-500)">Ask about calls, bookings, trends</div>
+          </div>
+        </div>
+        <div style="flex:1;overflow:auto;display:flex;flex-direction:column;gap:8px;margin:6px 0">
+          <sc-for list="{{ overlordThread }}" as="m" hint-placeholder-count="2">
+            <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>
+          </sc-for>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+          <sc-for list="{{ overlordQuickQuestions }}" as="q" hint-placeholder-count="3">
+            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onClick="{{ q.onClick }}">{{ q.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+    <img src="assets/uncle-tony-mascot.svg" onClick="{{ toggleOverlord }}" style="width:88px;height:88px;object-fit:contain;cursor:pointer;filter:drop-shadow(0 8px 16px rgba(0,0,0,.35));animation:overlord-bob 5s ease-in-out infinite">
+  </div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    screen: 'overview',
+    sidebarCollapsed: false,
+    expandedCallId: null,
+    callbackStatus: {},
+    trendFilter: 'niche',
+    trendShowCount: 6,
+    likedTrends: {},
+    savedTrends: {},
+    scriptModalTrendId: null,
+    overlordOpen: false,
+    overlordThread: [{from:'agent', text:"I read the same records as the dashboard. Ask me anything."}],
+    marketingChat: [{from:'agent', text:"I've scanned this week's scrape. Want the niche trends or what's trending globally right now?"}],
+    chatDraft: '',
+    menuUploaded: true,
+    packetConfirmed: true,
+    profileMenuOpen: false,
+    callFilter: 'all',
+    speakingCallId: null,
+    notifPrefs: {callbacks: true, digest: true, trends: false},
+    analyticsTab: 'impact',
+    analyticsPeriod: 'today',
+    gapReviews: {},
+    summaryModalId: null,
+    platformFilter: 'all',
+    savedLikedModal: null,
+  };
+
+  navDefs = [
+    {key:'overview', label:'Overview', glyph:'◆'},
+    {key:'calls', label:'Voice AI calls', glyph:'☎'},
+    {key:'setup', label:'Business setup', glyph:'▤'},
+    {key:'marketing', label:'Marketing', glyph:'▲'},
+    {key:'callbacks', label:'Callbacks', glyph:'●'},
+    {key:'analytics', label:'Analytics', glyph:'▦'},
+  ];
+
+  callVolumeValues = [5, 6, 5, 7, 6, 8, 8];
+  callVolumeDates = ['Wed, Sep 3', 'Thu, Sep 4', 'Fri, Sep 5', 'Sat, Sep 6', 'Sun, Sep 7', 'Mon, Sep 8', 'Tue, Sep 9'];
+
+  callsData = [
+    {id:1, time:'8:12am', duration:'3m42s', route:'Booking', outcome:'Booked', confidence:96, cost:'$0.18',
+      transcript:[{speaker:'Caller',text:"Hi, can I get a table for two around 12:30 today?"},{speaker:'Receptionist',text:"Let me check... yes, 12:30 for two works. Can I get a name and phone number?"},{speaker:'Caller',text:"Sarah, 0412 555 210."},{speaker:'Receptionist',text:"Table for two, 12:30 today, under Sarah — confirmed, see you soon!"}]},
+    {id:2, time:'8:47am', duration:'1m05s', route:'Question', outcome:'Answered', confidence:91, cost:'$0.06',
+      transcript:[{speaker:'Caller',text:"Do you have anything gluten-free?"},{speaker:'Receptionist',text:"Our sourdough isn't gluten-free, but the Frank Fungini's fillings can be served on a gluten-free base on request — just let the counter know."}]},
+    {id:3, time:'9:15am', duration:'0m48s', route:'Question', outcome:'Answered', confidence:98, cost:'$0.04',
+      transcript:[{speaker:'Caller',text:"What time do you open Saturdays?"},{speaker:'Receptionist',text:"8am to 3pm on Saturdays, 7:30 to 2:30 Monday to Friday."}]},
+    {id:4, time:'10:02am', duration:'2m11s', route:'Callback', outcome:'Callback logged', confidence:82, cost:'$0.11',
+      transcript:[{speaker:'Caller',text:"I need catering for about 30 people Saturday, is that something you do?"},{speaker:'Receptionist',text:"That's a bit bigger than what I can quote on the spot — I'll get Tony to call you back with pricing. Can I get your name and number?"},{speaker:'Caller',text:"Maria, 0432 118 764."}]},
+    {id:5, time:'11:30am', duration:'4m20s', route:'Booking', outcome:'Booked', confidence:94, cost:'$0.21',
+      transcript:[{speaker:'Caller',text:"Table for 6 this Saturday, 1pm?"},{speaker:'Receptionist',text:"That works — name and a contact number?"},{speaker:'Caller',text:"James, 0398 221 004, james@gmail.com if you need it."},{speaker:'Receptionist',text:"Table for six, Saturday 1pm, under James — confirmed, and I've sent a confirmation email."}]},
+    {id:6, time:'12:05pm', duration:'0m33s', route:'Chitchat', outcome:'Ended', confidence:99, cost:'$0.02',
+      transcript:[{speaker:'Caller',text:"Just checking you're open, that's all!"},{speaker:'Receptionist',text:"We are! Come on by."}]},
+    {id:7, time:'12:40pm', duration:'1m52s', route:'Question', outcome:"Couldn't answer", confidence:68, cost:'$0.09',
+      transcript:[{speaker:'Caller',text:"Can I swap the pastrami in the Uncle Tony for a vegan option?"},{speaker:'Receptionist',text:"I don't have a confirmed vegan swap for that one on file — I'll flag it for Tony to confirm and it'll be in the next update. Anything else I can help with today?"}]},
+    {id:8, time:'1:20pm', duration:'3m05s', route:'Booking', outcome:'Booked', confidence:97, cost:'$0.16',
+      transcript:[{speaker:'Caller',text:"Table for 4 tomorrow morning, around 8?"},{speaker:'Receptionist',text:"8am tomorrow, table for four — name and number please?"},{speaker:'Caller',text:"Owen, 0411 887 320."},{speaker:'Receptionist',text:"Booked — table for four, tomorrow 8am, under Owen."}]},
+  ];
+
+  callbacksData = [
+    {id:1, name:'Maria D.', number:'0432 118 •••', question:'Catering quote for 30 people, Saturday', time:'Today, 10:02am', priority:'High', status:'open'},
+    {id:2, name:'James K.', number:'0398 221 •••', question:'Do you do dairy-free toasties?', time:'Today, 12:40pm', priority:'Medium', status:'open'},
+    {id:3, name:'Steph R.', number:'0433 902 •••', question:'Office order for 15 people, can it be delivered?', time:'Yesterday', priority:'Medium', status:'in progress'},
+    {id:4, name:'Owen T.', number:'0411 887 •••', question:'Missing item on an Uber Eats order', time:'Yesterday', priority:'High', status:'done'},
+  ];
+
+  trendsData = [
+    {id:1, niche:true, platform:'TikTok', score:94, title:'POV: the toastie press moment', why:'Close-up press-and-sizzle clips are outperforming talking-head posts 3x in the cafe niche this week.'},
+    {id:2, niche:true, platform:'Instagram', score:89, title:'Behind the counter, rush hour', why:'Fast-cut "rush hour" POV content is trending across independent food accounts in Melbourne.'},
+    {id:3, niche:true, platform:'TikTok', score:85, title:'Secret menu reveal', why:'"Secret menu" reveals are driving high comment rates — audiences ask to try it themselves.'},
+    {id:4, niche:true, platform:'Instagram', score:81, title:'Regulars naming their usual order', why:'Regular-customer cameos build local trust and get shared by the customers themselves.'},
+    {id:5, niche:true, platform:'TikTok', score:78, title:'ASMR grill sizzle, close-up', why:'Sound-on ASMR food clips are holding watch-time far above the account average.'},
+    {id:6, niche:true, platform:'YouTube Shorts', score:74, title:'Why Eaton Mall: the local-legend angle', why:'Place-pride stories are resonating with the Oakleigh/Clayton local audience specifically.'},
+    {id:7, niche:false, platform:'TikTok', score:92, title:'"Get ready with me" but for a shift', why:'The GRWM format, reused for opening-shift routines, is trending broadly this week.'},
+    {id:8, niche:false, platform:'Instagram', score:88, title:'Silent walk-through trend', why:'No-dialogue, ambient walk-throughs are a top global format right now.'},
+    {id:9, niche:false, platform:'YouTube Shorts', score:83, title:'Day-in-the-life, sped up', why:'Sped-up day-in-the-life edits are a consistently strong global format.'},
+    {id:10, niche:false, platform:'TikTok', score:80, title:'"Rate my setup" duet chains', why:'Duet-chain formats are spiking across small business accounts globally.'},
+    {id:11, niche:false, platform:'Instagram', score:76, title:'Price breakdown reveal', why:'"What it actually costs me" transparency posts are trending across small food & retail businesses.'},
+    {id:12, niche:false, platform:'Facebook', score:71, title:'Customer reaction compilation', why:'Short reaction compilations are a reliable global trend this week.'},
+  ];
+
+  unansweredDefs = [
+    {id:1, text:'Can I swap the pastrami in the Uncle Tony for a vegan option?', evidence:6, lastAsked:'Today, 12:40pm'},
+    {id:2, text:'Do you have dairy-free options?', evidence:4, lastAsked:'Today, 12:40pm'},
+    {id:3, text:'Is there a kids menu or smaller portions?', evidence:3, lastAsked:'Yesterday'},
+  ];
+
+  menuRows = [
+    {name:'The Uncle Tony', ingredients:'Beef pastrami, sauerkraut, Swiss & American cheese, signature sauce, sourdough', price:'$19.00'},
+    {name:'The Wise Guy', ingredients:'Roasted pepper, roasted eggplant, tomato relish, Swiss cheese, sourdough', price:'$17.00'},
+    {name:'The Luca Brasi', ingredients:'House tuna mix, melted American cheese, signature sauce, sourdough', price:'$17.00'},
+    {name:'The Frank Fungini', ingredients:'Roasted garlic mushrooms, spinach, basil pesto, Swiss cheese, sourdough', price:'$17.00'},
+    {name:'The OG', ingredients:'Smoked turkey breast, tomato relish, Swiss cheese, sourdough', price:'$17.00'},
+  ];
+
+  packetFields = [
+    {label:'Hours', value:'Mon–Fri 7:30am–2:30pm, Sat 8am–3pm'},
+    {label:'Location', value:'7-9 Eaton Mall, Oakleigh VIC 3166'},
+    {label:'Phone', value:'+61 422 726 343'},
+    {label:'Seat capacity', value:'28 seats indoor, 12 outdoor'},
+    {label:'Known allergens on file', value:'Gluten (sourdough), dairy (cheese), tuna'},
+    {label:'Socials', value:'@uncletony.au'},
+  ];
+
+  setScreen(key) { this.setState({screen:key}); }
+  toggleSidebar() { this.setState(s => ({sidebarCollapsed: !s.sidebarCollapsed})); }
+  toggleCall(id) { this.setState(s => ({expandedCallId: s.expandedCallId === id ? null : id})); }
+  markCallbackDone(id) { this.setState(s => ({callbackStatus: {...s.callbackStatus, [id]: 'done'}})); }
+  uploadMenu() { this.setState({menuUploaded: true}); }
+  confirmPacket() { this.setState({packetConfirmed: true}); }
+  setTrendFilter(f) { this.setState({trendFilter: f, trendShowCount: 6}); }
+  setPlatformFilter(p) { this.setState({platformFilter: p, trendShowCount: 6}); }
+  openSavedLikedModal(kind) { this.setState({savedLikedModal: kind}); }
+  closeSavedLikedModal() { this.setState({savedLikedModal: null}); }
+  showMoreTrends() { this.setState(s => ({trendShowCount: s.trendShowCount + 6})); }
+  likeTrend(id) { this.setState(s => ({likedTrends: {...s.likedTrends, [id]: true}, scriptModalTrendId: id})); }
+  saveTrend(id) { this.setState(s => ({savedTrends: {...s.savedTrends, [id]: true}})); }
+  closeScriptModal() { this.setState({scriptModalTrendId: null}); }
+  saveScriptToLibrary() { this.setState(s => ({savedTrends: {...s.savedTrends, [s.scriptModalTrendId]: true}, scriptModalTrendId: null})); }
+  setChatDraft(e) { this.setState({chatDraft: e.target.value}); }
+  sendChat() {
+    const text = this.state.chatDraft.trim();
+    if (!text) return;
+    const reply = "Based on this week's scan: TikTok grill-sizzle ASMR clips are scoring highest in your niche (94), and the secret-menu reveal format is a close third — both film well in under 20 seconds.";
+    this.setState(s => ({marketingChat: [...s.marketingChat, {from:'user', text}, {from:'agent', text: reply}], chatDraft: ''}));
+  }
+  chatKeyDown(e) { if (e.key === 'Enter') this.sendChat(); }
+  chartMove(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = Math.round(frac * (this.callVolumeValues.length - 1));
+    if (idx !== this.state.hoverIdx) this.setState({hoverIdx: idx});
+  }
+  chartLeave() { this.setState({hoverIdx: null}); }
+  toggleProfileMenu() { this.setState(s => ({profileMenuOpen: !s.profileMenuOpen})); }
+  setCallFilter(f) { this.setState({callFilter: f, expandedCallId: null}); }
+  setAnalyticsTab(t) { this.setState({analyticsTab: t}); }
+  setAnalyticsPeriod(p) { this.setState({analyticsPeriod: p}); }
+  approveGap(id) { this.setState(s => ({gapReviews: {...s.gapReviews, [id]: 'approved'}})); }
+  dismissGap(id) { this.setState(s => ({gapReviews: {...s.gapReviews, [id]: 'dismissed'}})); }
+  openSummary(id) { this.setState({summaryModalId: id}); }
+  closeSummaryModal() { this.setState({summaryModalId: null}); }
+  toggleNotif(key) { this.setState(s => ({notifPrefs: {...s.notifPrefs, [key]: !s.notifPrefs[key]}})); }
+  speak(text) {
+    if (!window.speechSynthesis) return null;
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.03;
+    window.speechSynthesis.speak(u);
+    return u;
+  }
+  playTranscript(e, call) {
+    e.stopPropagation();
+    if (this.state.speakingCallId === call.id) { this.stopTranscript(); return; }
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    let last = null;
+    call.transcript.forEach(l => { last = this.speak(`${l.speaker}: ${l.text}`) || last; });
+    if (last) last.onend = () => this.setState({speakingCallId: null});
+    this.setState({speakingCallId: call.id});
+  }
+  speakLine(e, line) {
+    e.stopPropagation();
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    this.setState({speakingCallId: null});
+    this.speak(`${line.speaker}: ${line.text}`);
+  }
+  stopTranscript() {
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    this.setState({speakingCallId: null});
+  }
+  copyTranscript(e, call) {
+    e.stopPropagation();
+    const text = call.transcript.map(l => `${l.speaker}: ${l.text}`).join('\n');
+    navigator.clipboard && navigator.clipboard.writeText(text);
+  }
+  summarizeCall(call) {
+    const caller = call.transcript.find(l => l.speaker === 'Caller');
+    const ask = caller ? caller.text.replace(/[.?!]+$/, '') : 'the caller\'s request';
+    const outcomeLine = {
+      'Booked': 'the AI confirmed a booking and took the caller\'s contact details.',
+      'Answered': 'the AI answered directly from the business knowledge on file.',
+      'Callback logged': 'the AI couldn\'t quote on the spot and logged a callback for Tony.',
+      "Couldn't answer": 'the AI had no confirmed answer on file and flagged it for Tony to confirm.',
+      'Ended': 'the call ended without further action needed.',
+    }[call.outcome] || 'the call was handled.';
+    return `Caller asked: "${ask}". Route: ${call.route}, ${call.duration} long. Result: ${outcomeLine} Confidence ${call.confidence}%, cost ${call.cost}.`;
+  }
+  componentWillUnmount() { window.speechSynthesis && window.speechSynthesis.cancel(); }
+  toggleOverlord() { this.setState(s => ({overlordOpen: !s.overlordOpen})); }
+  askOverlord(q, a) {
+    this.setState(s => ({overlordThread: [...s.overlordThread, {from:'user', text:q}, {from:'agent', text:a}]}));
+  }
+  stopPropagation(e) { e.stopPropagation(); }
+
+  renderVals() {
+    const s = this.state;
+    const vals = this.callVolumeValues;
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const padTop = 15, padBottom = 15, plotH = 160 - padTop - padBottom;
+    const pts = vals.map((v, i) => ({
+      x: 10 + i * (580 / (vals.length - 1)),
+      y: padTop + (1 - (v - min) / ((max - min) || 1)) * plotH,
+    }));
+    const smoothPath = (p) => {
+      let d = `M ${p[0].x} ${p[0].y}`;
+      for (let i = 0; i < p.length - 1; i++) {
+        const mx = (p[i].x + p[i + 1].x) / 2, my = (p[i].y + p[i + 1].y) / 2;
+        d += ` Q ${p[i].x} ${p[i].y} ${mx} ${my}`;
+      }
+      d += ` T ${p[p.length - 1].x} ${p[p.length - 1].y}`;
+      return d;
+    };
+    const chartLinePath = smoothPath(pts);
+    const chartAreaPath = `${chartLinePath} L ${pts[pts.length - 1].x} 150 L ${pts[0].x} 150 Z`;
+    const chartGridX = pts.map(p => p.x);
+    const hoverIdx = s.hoverIdx;
+    const chartHoverPoint = hoverIdx != null ? {
+      x: pts[hoverIdx].x, y: pts[hoverIdx].y,
+      date: this.callVolumeDates[hoverIdx], value: this.callVolumeValues[hoverIdx],
+      tooltipStyle: `position:absolute;left:${pts[hoverIdx].x / 600 * 100}%;top:${pts[hoverIdx].y / 160 * 100}%;transform:translate(-50%,-135%);background:#0a1f1c;color:#fff;padding:8px 12px;border-radius:8px;font-size:12px;white-space:nowrap;pointer-events:none;box-shadow:0 6px 16px rgba(0,0,0,.45)`,
+    } : null;
+    const chartDeltaPct = (((vals[vals.length - 1] - vals[0]) / (vals[0] || 1)) * 100).toFixed(1);
+    const chart = { chartLinePath, chartAreaPath, chartGridX, chartHoverPoint, chartDeltaPct, chartMove: (e) => this.chartMove(e), chartLeave: () => this.chartLeave() };
+    const navStyle = (key) => `display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-md);cursor:pointer;font-size:13px;` +
+      (s.screen === key ? `background:var(--color-bg);color:var(--color-accent);` : `color:var(--color-neutral-300);`);
+
+    const titles = {overview:'Welcome, Tony', calls:'Voice AI calls', setup:'Business Context', marketing:'Marketing agent', callbacks:'Callbacks', analytics:'Analytics', profile:'Profile settings'};
+    const subtitles = {overview:'Everything at a glance across every agent.', calls:'Every call the Voice AI handled, with metrics and transcripts.', setup:'Menu and business knowledge the agents rely on.', marketing:'Trending content, scored and filtered to your niche.', callbacks:'Open tasks the Voice AI couldn\'t resolve on its own.', analytics:'Impact, Voice Ops and Insights — one tab each.', profile:'Account, notifications and business context.'};
+
+    const outcomeTagStyle = (outcome) => {
+      if (outcome === 'Booked') return 'background:var(--color-accent-800);color:var(--color-accent-100)';
+      if (outcome === "Couldn't answer") return 'background:var(--color-neutral-800);color:var(--color-neutral-300)';
+      if (outcome === 'Callback logged') return 'background:var(--color-neutral-800);color:var(--color-neutral-300)';
+      return 'background:var(--color-neutral-900);color:var(--color-neutral-400)';
+    };
+
+    const fmtTs = (i) => `0:${String(6 + i * 17).padStart(2, '0')}`;
+    const allCalls = this.callsData.map(c => {
+      const ttfb = 320 + ((c.id * 47) % 280);
+      const turns = c.transcript.filter(t => t.speaker === 'Receptionist').length;
+      const base = {
+        ...c,
+        ttfb,
+        expanded: s.expandedCallId === c.id,
+        chevron: s.expandedCallId === c.id ? '▾' : '▸',
+        onClick: () => this.toggleCall(c.id),
+        tagStyle: outcomeTagStyle(c.outcome),
+        playLabel: s.speakingCallId === c.id ? '■ Stop' : '▶ Play',
+        transcript: c.transcript.map((t, i) => ({
+          ...t,
+          ts: fmtTs(i),
+          speakerStyle: t.speaker === 'Caller' ? 'background:var(--color-neutral-800);color:var(--color-neutral-200)' : 'background:var(--color-accent-800);color:var(--color-accent-100)',
+          onSpeak: (e) => this.speakLine(e, t),
+        })),
+        metrics: [
+          {label:'Handle time', value:c.duration},
+          {label:'LLM TTFB', value:`${ttfb} ms`},
+          {label:'ASR confidence', value:`${c.confidence}%`},
+          {label:'Agent turns', value:String(turns)},
+          {label:'Interruptions', value:String(c.id % 3)},
+          {label:'Task grade', value: c.outcome === "Couldn't answer" ? 'Failure' : 'Success'},
+          {label:'Handoff', value: c.route === 'Callback' ? 'Forced — unanswered' : 'None'},
+          {label:'Cost', value:c.cost},
+        ],
+      };
+      base.onPlay = (e) => this.playTranscript(e, base);
+      base.onCopy = (e) => this.copyTranscript(e, base);
+      base.onSummary = (e) => { e.stopPropagation(); this.openSummary(c.id); };
+      base.summaryText = this.summarizeCall(c);
+      return base;
+    });
+    const callFilterDefs = [['all','All'],['Booking','Bookings'],['Question','Questions'],['Callback','Callbacks'],['Chitchat','Chitchat']];
+    const calls = s.callFilter === 'all' ? allCalls : allCalls.filter(c => c.route === s.callFilter);
+
+    const priorityTagClass = (p) => p === 'High' ? 'tag-outline' : 'tag-neutral';
+    const statusTagClass = (st) => st === 'done' ? 'tag-accent' : st === 'in progress' ? 'tag-outline' : 'tag-neutral';
+    const callbacks = this.callbacksData.map(cb => {
+      const status = s.callbackStatus[cb.id] || cb.status;
+      return {...cb, status, priorityTagClass: priorityTagClass(cb.priority), statusTagClass: statusTagClass(status), showDoneButton: status !== 'done', onMarkDone: () => this.markCallbackDone(cb.id)};
+    });
+
+    const filtered = this.trendsData.filter(t => (s.trendFilter === 'niche' ? t.niche : !t.niche) && (s.platformFilter === 'all' || t.platform === s.platformFilter));
+    const visibleTrends = filtered.slice(0, s.trendShowCount).map(t => {
+      const liked = !!s.likedTrends[t.id];
+      const saved = !!s.savedTrends[t.id];
+      return {
+        ...t, likeStyle: liked ? 'color:var(--color-accent);border-color:var(--color-accent)' : '', likeGlyph: liked ? '♥' : '♡',
+        saveStyle: saved ? 'color:var(--color-accent);border-color:var(--color-accent)' : '', saveGlyph: saved ? '✓' : '＋',
+        onLike: () => this.likeTrend(t.id), onSave: () => this.saveTrend(t.id),
+      };
+    });
+
+    let scriptModalTrend = null;
+    if (s.scriptModalTrendId) {
+      const t = this.trendsData.find(x => x.id === s.scriptModalTrendId);
+      if (t) scriptModalTrend = {
+        title: t.title,
+        angles: [`The counter-eye-view: shoot straight from the till so the viewer feels served.`, `The regular's cameo: a familiar face orders "the usual" and reacts to camera.`, `The 10-second build: fast cuts on assembly, one clean hero shot at the end.`],
+        guide: `Shoot handheld at counter height, natural light from the mall entrance, 15–20 seconds, cut on the beat of the grill press. Caption with the sandwich name and price — comments convert better with price shown up front.`,
+      };
+    }
+
+    const bubbleStyle = (from) => `align-self:${from==='user' ? 'flex-end' : 'flex-start'};max-width:85%;font-size:13px;padding:8px 12px;border-radius:var(--radius-md);` +
+      (from === 'user' ? 'background:var(--color-accent);color:var(--color-neutral-100)' : 'background:var(--color-neutral-200);color:var(--color-text)');
+
+    const overlordQuickQuestions = [
+      {label:'Bookings last week?', onClick: () => this.askOverlord('How many bookings did the AI take last week?', "27 bookings last week, up from 21 the week before — 71% of calls with booking intent converted.")},
+      {label:"What's trending?", onClick: () => this.askOverlord("What's trending this week?", "Grill-sizzle ASMR clips are scoring highest in your niche (94), and the secret-menu reveal is close behind — check the Marketing screen for both.")},
+      {label:'What are people calling about?', onClick: () => this.askOverlord('What are people calling about most?', "Bookings first, then hours and gluten-free/dairy-free questions. The vegan swap for the Uncle Tony has come up 6 times unanswered — worth confirming.")},
+    ];
+
+    const analyticsCards = [];
+    const bandInfo = (word) => {
+      if (word === 'Good') return {word, icon: '✓', style: 'font-size:11px;font-weight:600;color:#3a7a4a'};
+      if (word === 'Watch') return {word, icon: '△', style: 'font-size:11px;font-weight:600;color:var(--color-accent-600)'};
+      return {word: 'Needs attention', icon: '⚠', style: 'font-size:11px;font-weight:600;color:#a03a3a'};
+    };
+    const analyticsTabs = [['impact','Impact'],['voiceops','Voice Ops'],['insights','Insights']].map(([key,label]) => ({label, active: s.analyticsTab === key, onSelect: () => this.setAnalyticsTab(key)}));
+    const periodOptions = [['today','Today'],['week','This week'],['custom','Custom']].map(([key,label]) => ({label, active: s.analyticsPeriod === key, onSelect: () => this.setAnalyticsPeriod(key)}));
+    const impactTiles = [
+      {kicker:'Calls handled', headline:'8', sub:'↑ vs 6 calls yesterday'},
+      {kicker:'Bookings & covers', headline:'3 / 12 covers', sub:'↑ vs 2 bookings / 9 covers yesterday'},
+      {kicker:'Containment', headline:'75%', sub:'6 of 8 calls, no callback requested'},
+      {kicker:'Outside opening hours', headline:'1 / 13%', sub:'started outside 7:30am–2:30pm Mon–Fri'},
+    ];
+    const voiceOpsBandTiles = [
+      {tier:'Business', label:'Task success', value:'88%', note:'7 of 8 graded · 1 failure', band: bandInfo('Good')},
+      {tier:'Business', label:'Containment', value:'75%', note:'6 of 8, no callback requested', band: bandInfo('Good')},
+      {tier:'Handoffs', label:'Planned vs forced', value:'0% / 13%', note:'1 of 8 forced · 0 unclassified', band: bandInfo('Watch')},
+      {tier:'Quality', label:'Conversation coherence', value:'93%', note:'Success ÷ (success + failure)', band: bandInfo('Good')},
+      {tier:'Ops', label:'Error rate', value:'0%', note:'0 of 8 · status coverage 8/8', band: bandInfo('Good')},
+      {tier:'Ops', label:'Call volume', value:'8 / day', note:'1.33× baseline of 6/day', band: bandInfo('Watch')},
+      {tier:'Ops', label:'Fallback rate', value:'13%', note:'1 of 8 calls hit a knowledge gap', band: bandInfo('Watch')},
+    ].map(vt => ({...vt, bandWord: vt.band.word, bandIcon: vt.band.icon, bandStyle: vt.band.style}));
+    const unansweredQuestions = this.unansweredDefs.map(u => {
+      const review = s.gapReviews[u.id];
+      return {
+        ...u, pending: !review,
+        statusLabel: review === 'approved' ? 'Approved' : review === 'dismissed' ? 'Dismissed' : 'Unreviewed',
+        statusStyle: review === 'approved' ? 'background:var(--color-accent-800);color:var(--color-accent-100)' : review === 'dismissed' ? 'background:var(--color-neutral-800);color:var(--color-neutral-300)' : 'background:var(--color-neutral-200);color:var(--color-neutral-700)',
+        onApprove: () => this.approveGap(u.id), onDismiss: () => this.dismissGap(u.id),
+      };
+    });
+    const openCbs = callbacks.filter(c => c.status !== 'done');
+    const openCallbacksList = openCbs.map(c => ({name: c.name, wait: c.time}));
+    const oldestCallbackWait = openCbs.length ? openCbs[openCbs.length - 1].time : 'None waiting';
+    const handoffReasonBars = [
+      {label:'Forced — unanswered question', count:1, pct:100, color:'var(--color-accent-600)'},
+      {label:'Planned', count:0, pct:0, color:'var(--color-accent)'},
+      {label:'Unclassified', count:0, pct:0, color:'var(--color-neutral-400)'},
+    ];
+
+    return {
+      sidebarStyle: `width:${s.sidebarCollapsed ? '64px' : '220px'};flex:none;display:flex;flex-direction:column;background:var(--color-accent);transition:width .15s`,
+      navOverviewStyle: navStyle('overview'), navOverviewClick: () => this.setScreen('overview'),
+      navCallsStyle: navStyle('calls'), navCallsClick: () => this.setScreen('calls'),
+      navSetupStyle: navStyle('setup'), navSetupClick: () => this.setScreen('setup'),
+      navMarketingStyle: navStyle('marketing'), navMarketingClick: () => this.setScreen('marketing'),
+      navCallbacksStyle: navStyle('callbacks'), navCallbacksClick: () => this.setScreen('callbacks'),
+      navAnalyticsStyle: navStyle('analytics'), navAnalyticsClick: () => this.setScreen('analytics'),
+      toggleSidebar: () => this.toggleSidebar(), sidebarCollapsed: s.sidebarCollapsed,
+      collapseGlyph: s.sidebarCollapsed ? '»' : '«', collapseJustify: s.sidebarCollapsed ? 'center' : 'flex-start',
+      pageTitle: titles[s.screen], pageSubtitle: subtitles[s.screen],
+      isOverview: s.screen === 'overview', isCalls: s.screen === 'calls', isSetup: s.screen === 'setup', isMarketing: s.screen === 'marketing', isCallbacks: s.screen === 'callbacks', isAnalytics: s.screen === 'analytics', isProfile: s.screen === 'profile',
+
+      profileMenuOpen: s.profileMenuOpen, toggleProfileMenu: () => this.toggleProfileMenu(),
+      profileChevron: s.profileMenuOpen ? '▴' : '▾',
+      profileMenuItems: [
+        {label:'Profile settings', style:'padding:8px 10px;border-radius:var(--radius-md);font-size:13px;cursor:pointer', onClick: () => { this.setScreen('profile'); this.toggleProfileMenu(); }},
+        {label:'Sign out', style:'padding:8px 10px;border-radius:var(--radius-md);font-size:13px;cursor:pointer;color:var(--color-neutral-500);border-top:1px solid var(--color-divider);margin-top:4px', onClick: () => this.toggleProfileMenu()},
+      ],
+      profileFields: [
+        {label:'Email', value:'tony@uncletony.com.au'},
+        {label:'Phone', value:'+61 422 726 343'},
+        {label:'Business', value:'Uncle Tony · 7-9 Eaton Mall, Oakleigh VIC'},
+        {label:'Timezone', value:'Australia/Melbourne (AEST)'},
+        {label:'Agents active', value:'Voice AI, Marketing, Research'},
+      ],
+      notifRows: [
+        {key:'callbacks', label:'New callbacks', sub:'Text me when a caller needs Tony'},
+        {key:'digest', label:'Weekly digest', sub:'Monday summary of calls and bookings'},
+        {key:'trends', label:'Trend alerts', sub:'When a niche trend scores above 90'},
+      ].map(n => {
+        const on = !!s.notifPrefs[n.key];
+        return {...n,
+          onToggle: () => this.toggleNotif(n.key),
+          trackStyle: `width:40px;height:22px;border-radius:999px;flex:none;cursor:pointer;position:relative;transition:background .15s;background:${on ? 'var(--color-accent)' : 'var(--color-neutral-300)'}`,
+          knobStyle: `position:absolute;top:3px;left:${on ? '21px' : '3px'};width:16px;height:16px;border-radius:50%;background:var(--color-surface);transition:left .15s`,
+        };
+      }),
+      goSetup: () => this.setScreen('setup'),
+
+      voiceOpsTiles: [
+        {label:'Task success', value:'88%', note:'7 of 8 graded · 1 failure'},
+        {label:'Containment', value:'75%', note:'6 of 8, no callback requested'},
+        {label:'Error rate', value:'0%', note:'0 of 8 calls · status coverage 8/8'},
+        {label:'Handoffs planned / forced', value:'0% / 13%', note:'1 of 8 forced · 0 unclassified'},
+      ],
+      callFilters: callFilterDefs.map(([key, label]) => ({label, active: s.callFilter === key, onSelect: () => this.setCallFilter(key)})),
+      callLogCountLabel: `Showing ${calls.length} of ${allCalls.length} calls today · Australia/Melbourne`,
+      summaryModalCall: s.summaryModalId ? allCalls.find(c => c.id === s.summaryModalId) : null,
+      closeSummaryModal: () => this.closeSummaryModal(),
+      speakingCallId: s.speakingCallId, stopTranscript: () => this.stopTranscript(),
+
+      freshness: {asOf:'2 min ago', timezone:'Australia/Melbourne', staleAfterMinutes:5},
+      impact: {
+        bookings: {compare:'↔ vs 2 bookings / 9 covers yesterday'},
+        calls: {compare:'↔ vs 6 calls yesterday'},
+      },
+      ...chart,
+      callVolumeLabels:['6d ago','5d ago','4d ago','3d ago','2d ago','Yesterday','Today'],
+      donutStyle:'width:88px;height:88px;border-radius:50%;flex:none;position:relative;background:conic-gradient(var(--color-accent) 0% 37.5%, var(--color-accent-500) 37.5% 75%, var(--color-neutral-500) 75% 87.5%, var(--color-neutral-300) 87.5% 100%)',
+      donutHoleStyle:'position:absolute;inset:14px;border-radius:50%;background:var(--color-surface);display:flex;flex-direction:column;align-items:center;justify-content:center',
+      donutTotal:'8',
+      routeLegend:[
+        {label:'Booking', count:3, pct:37.5, color:'var(--color-accent)'},
+        {label:'Question', count:3, pct:37.5, color:'var(--color-accent-500)'},
+        {label:'Callback', count:1, pct:12.5, color:'var(--color-neutral-500)'},
+        {label:'Chitchat', count:1, pct:12.5, color:'var(--color-neutral-300)'},
+      ],
+      overviewRecentCalls: calls.slice(0,4).map(c => ({time:c.time, route:c.route, outcome:c.outcome, confidence:c.confidence, tagStyle:c.tagStyle})),
+      quickActions: [
+        {icon:'●', label:`${callbacks.filter(c=>c.status!=='done').length} open callbacks`, sub: callbacks.filter(c=>c.status!=='done')[0]?.question || 'All caught up', tag:'High', tagStyle:'background:var(--color-neutral-800);color:var(--color-neutral-300)', onClick: () => this.setScreen('callbacks')},
+        {icon:'?', label:'1 unanswered question flagged', sub:'Vegan swap for the Uncle Tony — 6 asks', tag:'Review', tagStyle:'background:var(--color-neutral-200);color:var(--color-neutral-700)', onClick: () => this.setScreen('calls')},
+        {icon:'▲', label:'Top trend this week', sub: this.trendsData[0].title, tag:'Marketing', tagStyle:'background:var(--color-neutral-200);color:var(--color-neutral-700)', onClick: () => this.setScreen('marketing')},
+      ],
+      goCalls: () => this.setScreen('calls'), goCallbacks: () => this.setScreen('callbacks'), goMarketing: () => this.setScreen('marketing'),
+
+      calls,
+
+      menuUploaded: s.menuUploaded, uploadMenu: () => this.uploadMenu(), menuRows: this.menuRows,
+      packetFields: this.packetFields, packetConfirmed: s.packetConfirmed, confirmPacket: () => this.confirmPacket(),
+
+      trendFilterNiche: s.trendFilter === 'niche', trendFilterGlobal: s.trendFilter === 'global',
+      setTrendNiche: () => this.setTrendFilter('niche'), setTrendGlobal: () => this.setTrendFilter('global'),
+      platformFilterOf: (p) => ({
+        active: s.platformFilter === p,
+        style: `display:flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:999px;cursor:pointer;border:1px solid ${s.platformFilter === p ? 'var(--color-accent)' : 'var(--color-divider)'};background:${s.platformFilter === p ? 'var(--color-accent)' : 'transparent'};color:${s.platformFilter === p ? 'var(--color-neutral-100)' : 'var(--color-text)'}`,
+        onClick: () => this.setPlatformFilter(p),
+      }),
+      pfAll: {style:`display:flex;align-items:center;justify-content:center;padding:2px;border:none;background:none;cursor:pointer;color:${s.platformFilter === 'all' ? 'var(--color-accent)' : 'var(--color-neutral-500)'}`, onClick: () => this.setPlatformFilter('all')},
+      pfInstagram: {style:`display:flex;align-items:center;justify-content:center;padding:2px;border:none;background:none;cursor:pointer;color:${s.platformFilter === 'Instagram' ? 'var(--color-accent)' : 'var(--color-neutral-500)'}`, onClick: () => this.setPlatformFilter('Instagram')},
+      pfTiktok: {style:`display:flex;align-items:center;justify-content:center;padding:2px;border:none;background:none;cursor:pointer;color:${s.platformFilter === 'TikTok' ? 'var(--color-accent)' : 'var(--color-neutral-500)'}`, onClick: () => this.setPlatformFilter('TikTok')},
+      pfFacebook: {style:`display:flex;align-items:center;justify-content:center;padding:2px;border:none;background:none;cursor:pointer;color:${s.platformFilter === 'Facebook' ? 'var(--color-accent)' : 'var(--color-neutral-500)'}`, onClick: () => this.setPlatformFilter('Facebook')},
+      pfShorts: {style:`display:flex;align-items:center;justify-content:center;padding:2px;border:none;background:none;cursor:pointer;color:${s.platformFilter === 'YouTube Shorts' ? 'var(--color-accent)' : 'var(--color-neutral-500)'}`, onClick: () => this.setPlatformFilter('YouTube Shorts')},
+      savedLikedTrends: this.trendsData.filter(t => s.savedLikedModal === 'saves' ? s.savedTrends[t.id] : s.likedTrends[t.id]),
+      savedLikedEmptyLabel: s.savedLikedModal === 'saves' ? 'No trends saved yet. Save one from the list on the left.' : 'No trends liked yet. Like a trend to see it here.',
+      savedCount: this.trendsData.filter(t => s.savedTrends[t.id]).length,
+      likedCount: this.trendsData.filter(t => s.likedTrends[t.id]).length,
+      openSavesModal: () => this.openSavedLikedModal('saves'), openLikesModal: () => this.openSavedLikedModal('likes'),
+      savedLikedModalOpen: !!s.savedLikedModal,
+      savedLikedModalTitle: s.savedLikedModal === 'saves' ? 'My saves' : 'My likes',
+      closeSavedLikedModal: () => this.closeSavedLikedModal(),
+      trendCountLabel: `Showing ${visibleTrends.length} of ${filtered.length}`,
+      visibleTrends, showMoreTrends: () => this.showMoreTrends(), showMoreLabel: visibleTrends.length < filtered.length ? 'Show more' : 'Showing all scored trends',
+      platformGroups: Object.entries(visibleTrends.reduce((acc, t) => { (acc[t.platform] = acc[t.platform] || []).push(t); return acc; }, {})).map(([platform, items]) => ({platform, items, count: items.length})),
+      scriptModalTrend, closeScriptModal: () => this.closeScriptModal(), saveScriptToLibrary: () => this.saveScriptToLibrary(), stopPropagation: (e) => this.stopPropagation(e),
+      marketingChat: s.marketingChat.map(m => ({...m, bubbleStyle: bubbleStyle(m.from)})),
+      chatDraft: s.chatDraft, setChatDraft: (e) => this.setChatDraft(e), sendChat: () => this.sendChat(), chatKeyDown: (e) => this.chatKeyDown(e),
+
+      callbacks,
+
+      analyticsCards,
+      analyticsTabs, periodOptions,
+      isImpactTab: s.analyticsTab === 'impact', isVoiceOpsTab: s.analyticsTab === 'voiceops', isInsightsTab: s.analyticsTab === 'insights',
+      impactTiles, voiceOpsBandTiles, unansweredQuestions, openCallbacksList, oldestCallbackWait, handoffReasonBars,
+
+      overlordOpen: s.overlordOpen, toggleOverlord: () => this.toggleOverlord(),
+      overlordThread: s.overlordThread.map(m => ({...m, bubbleStyle: bubbleStyle(m.from)})),
+      overlordQuickQuestions,
+    };
+  }
+}
+</script>
+</body>
+</html>

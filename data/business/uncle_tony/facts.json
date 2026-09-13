@@ -1,0 +1,12 @@
+{
+  "_readme": "Facts transcribed from the dashboard mockup's research packet. OWNER-UNVERIFIED.",
+  "business_name": {"value": "Uncle Tony"},
+  "hours": {"value": "7:30am to 2:30pm Monday to Friday, and 8am to 3pm on Saturday. Closed Sunday."},
+  "address": {"value": "7-9 Eaton Mall, Oakleigh, Victoria 3166"},
+  "phone": {"value": "+61 422 726 343"},
+  "seating": {"value": "28 seats indoor and 12 outdoor"},
+  "socials": {"value": "@uncletony.au on Instagram"},
+  "owner_name": {"value": "Tony Marino"},
+  "owner_email": {"value": "tony@uncletony.com.au"},
+  "website": {"value": "uncletony.com.au"}
+}

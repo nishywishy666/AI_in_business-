@@ -69,6 +69,43 @@ class MemoryReader:
         return rows
 
 
+class JsonBusinessReader(MemoryReader):
+    """Offline reader over a dataset folder (`data/business/<name>/{menu_items,facts}.json`) plus
+    capacity slots materialised in memory from config/capacity.yaml windows. Same shapes as Firestore,
+    so the simulator and the dashboard answer from the real business data with zero keys (plan 0005).
+    Keys starting with "_" (readme notes) are skipped."""
+
+    def __init__(self, dataset_dir: Any, business_id: str, *, windows: list[dict] | None = None,
+                 slot_days: int = 60, today: dt.date | None = None) -> None:
+        from pathlib import Path
+
+        folder = Path(dataset_dir)
+        paths = BusinessPaths(business_id)
+        docs: dict[str, dict] = {}
+        for item_id, doc in _load_json(folder / "menu_items.json").items():
+            docs[paths.menu_item(item_id)] = doc
+        for key, doc in _load_json(folder / "facts.json").items():
+            docs[paths.fact(key)] = doc
+        if windows:
+            from services.booking.capacity import materialise_slots, parse_windows
+
+            start = today or dt.date.today()
+            for slot_id, doc in materialise_slots(parse_windows(windows), start, slot_days, business_id).items():
+                docs[paths.capacity_slot(slot_id)] = doc
+        super().__init__(docs)
+        self.dataset_dir = folder
+        self.business_id = business_id
+
+
+def _load_json(path: Any) -> dict:
+    import json
+
+    if not path.exists():
+        return {}
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return {k: v for k, v in data.items() if not str(k).startswith("_")}
+
+
 def _match(doc: dict, clause: tuple[str, str, Any]) -> bool:
     name, op, value = clause
     current = doc.get(name)

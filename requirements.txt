@@ -1,6 +1,6 @@
-# Vercel Python runtime dependencies for the voice receptionist (api/index.py).
-# Mirrors [project.optional-dependencies].voice in pyproject.toml plus the shared runtime deps.
-# No torch (vr_plan.md §3). Marketing-agent-only deps (pytrends, youtube-transcript-api) are not needed here.
+# Vercel Python runtime dependencies for api/index.py: the voice receptionist, the dashboard and the
+# marketing agent's routes all run in that one function (plan 0005). Mirrors pyproject.toml
+# (core + [voice]). No torch (vr_plan.md §3). Keep in sync when pyproject changes.
 fastapi>=0.115,<1
 uvicorn[standard]>=0.30,<1
 python-multipart>=0.0.9
@@ -20,3 +20,7 @@ httpx>=0.27,<1
 pydantic>=2.8,<3
 python-dotenv>=1.0,<2
 tzdata>=2024.1
+# marketing agent runtime (imported by the dashboard's /api/marketing and /api/jobs routes)
+apscheduler>=3.10,<4
+platformdirs>=4.2,<5
+pytrends>=4.9,<5

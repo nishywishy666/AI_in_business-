@@ -82,6 +82,11 @@ class BusinessPaths:
         return f"{self.emails_sent}/{idempotency_key}"
 
     @property
+    def settings_doc(self) -> str:
+        """Dashboard-owned settings (notification toggles, packet confirmation) — plan 0005."""
+        return f"{self.root}/settings/dashboard"
+
+    @property
     def rollups(self) -> str:
         return f"{self.root}/rollups"
 

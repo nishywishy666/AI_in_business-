@@ -14,6 +14,9 @@ facts:
   phone: [phone, number, call, contact]
   parking: [parking, park]
   bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings"]
+  seating: [seats, seating, capacity, "how many people", outdoor, indoor, "sit down", "sit outside"]
+  socials: [instagram, tiktok, social, socials, "follow you"]
+  website: [website, online, "order online"]
 
 allergen_words: [allergy, allergies, allergic, allergen, allergens, intolerance, intolerant, contain, contains,
                  "free of", "free from", nut, nuts, peanut, peanuts, gluten, dairy, milk, egg, eggs, sesame, soy,

@@ -147,6 +147,33 @@ def offline_transport(fixtures_dir: Path) -> FixtureTransport:
     return transport
 
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_FIXTURES = REPO_ROOT / "tests" / "fixtures"
+
+
+def offline_settings(settings: Settings, *, fixtures_dir: Path | None = None,
+                     cache_root: Path | None = None) -> Settings:
+    """Force offline mode: fixtures + placeholder keys + a repo-local cache root (CLI and dashboard)."""
+    settings.offline = True
+    settings.fixtures_dir = fixtures_dir or settings.fixtures_dir or DEFAULT_FIXTURES
+    settings.scrapecreators_api_key = settings.scrapecreators_api_key or "offline"
+    settings.youtube_api_key = settings.youtube_api_key or "offline"
+    settings.gemini_api_key = settings.gemini_api_key or "offline"
+    settings.cache_root = cache_root or settings.cache_root or REPO_ROOT / ".marketing_radar_cache"
+    return settings
+
+
+def offline_backend(user_id: str, settings: Settings, *, context_seed: dict | None = None) -> Backend:
+    """JSON-file Firestore stand-in under the cache root, with the parent questionnaire seeded once."""
+    from .db.json_backend import JsonFileBackend
+
+    backend = JsonFileBackend((settings.cache_root or DEFAULT_FIXTURES) / "offline_firestore.json")
+    context_path = settings.context_path(user_id)
+    if backend.get(context_path) is None and context_seed is not None:
+        backend.set(context_path, context_seed)
+    return backend
+
+
 def build_deps(user_id: str, settings: Settings, *, backend: Backend | None = None,
                transport: HttpTransport | None = None, gemini_transport: GeminiTransport | None = None,
                trends_provider: TrendsProvider | None = None, clock: Clock = utc_now,

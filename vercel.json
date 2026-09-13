@@ -3,11 +3,22 @@
   "functions": {
     "api/index.py": {
       "maxDuration": 300,
-      "memory": 2048
+      "memory": 2048,
+      "includeFiles": "{UI/**,config/**,data/**,dashboard/**,services/**,contracts/**,marketing_radar/**,assets/**,tests/fixtures/**}"
     }
   },
   "rewrites": [
+    { "source": "/", "destination": "/api/index" },
+    { "source": "/support.js", "destination": "/api/index" },
+    { "source": "/_ds/(.*)", "destination": "/api/index" },
+    { "source": "/assets/(.*)", "destination": "/api/index" },
     { "source": "/api/(.*)", "destination": "/api/index" },
     { "source": "/healthz", "destination": "/api/index" }
+  ],
+  "crons": [
+    { "path": "/api/jobs/marketing-daily-pull", "schedule": "5 0 * * *" },
+    { "path": "/api/jobs/marketing-scan", "schedule": "30 0 */2 * *" },
+    { "path": "/api/jobs/marketing-expire", "schedule": "0 1 * * *" },
+    { "path": "/api/jobs/calendar-retry", "schedule": "15 1 * * *" }
   ]
 }

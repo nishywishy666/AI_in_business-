@@ -1,0 +1,33 @@
+{
+  "_readme": "Business dataset transcribed from the dashboard mockup (UI/... Uncle Tony Overlord Dashboard.dc.html). Prices and allergen statuses are OWNER-UNVERIFIED: confirm with the owner before judged calls. confirmedByOwner=true is set so the receptionist can answer from it.",
+  "the_uncle_tony": {
+    "name": "The Uncle Tony", "section": "sandwiches", "priceCents": 1900, "confirmedByOwner": true,
+    "description": "Beef pastrami, sauerkraut, Swiss & American cheese, signature sauce, sourdough",
+    "dietaryTags": [],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}, "milk": {"status": "contains", "confirmed": true}}
+  },
+  "the_wise_guy": {
+    "name": "The Wise Guy", "section": "sandwiches", "priceCents": 1700, "confirmedByOwner": true,
+    "description": "Roasted pepper, roasted eggplant, tomato relish, Swiss cheese, sourdough",
+    "dietaryTags": ["vegetarian"],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}, "milk": {"status": "contains", "confirmed": true}}
+  },
+  "the_luca_brasi": {
+    "name": "The Luca Brasi", "section": "sandwiches", "priceCents": 1700, "confirmedByOwner": true,
+    "description": "House tuna mix, melted American cheese, signature sauce, sourdough",
+    "dietaryTags": [],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}, "milk": {"status": "contains", "confirmed": true}, "fish": {"status": "contains", "confirmed": true}}
+  },
+  "the_frank_fungini": {
+    "name": "The Frank Fungini", "section": "sandwiches", "priceCents": 1700, "confirmedByOwner": true,
+    "description": "Roasted garlic mushrooms, spinach, basil pesto, Swiss cheese, sourdough",
+    "dietaryTags": ["vegetarian"],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}, "milk": {"status": "contains", "confirmed": true}}
+  },
+  "the_og": {
+    "name": "The OG", "section": "sandwiches", "priceCents": 1700, "confirmedByOwner": true,
+    "description": "Smoked turkey breast, tomato relish, Swiss cheese, sourdough",
+    "dietaryTags": [],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}, "milk": {"status": "contains", "confirmed": true}}
+  }
+}

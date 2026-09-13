@@ -43,6 +43,14 @@ Skim [lessons/](lessons/) for anything relevant to the area you're about to touc
 - **Two Firestore trees coexist:** marketing writes `users/{uid}/marketingRadar/**`; voice writes `businesses/{businessId}/**`. Not reconciled (R2 + R0) — see plan 0004.
 - **Open items:** every `TODO(spec)` in the tree (`grep -rn "TODO(spec)"`), the real-call gates, ONNX model files, and the business dataset owned by the dashboard team.
 
+## Dashboard / overlord (`dashboard/`, `UI/`, `data/business/`)
+
+- **Plan:** [plans/0005-dashboard-wiring.md](plans/0005-dashboard-wiring.md). **Metric contract:** `UI/UI mockups project scope/uploads/metrics.md`.
+- **Shape:** `UI/` is a Claude Design export and is **never edited** (`tests/test_dashboard_ui.py` pins its hashes). `dashboard/ui.py` serves it at `/` with `dashboard/bridge.js` appended inside its logic script at request time; the bridge loads `/api/dashboard/bootstrap` and routes every button to the API. Numbers come from `dashboard/analytics.py` (metrics.md formulas, pure) over `dashboard/records.py` (local JSONL or Firestore). Marketing routes are mounted at `/api/marketing/*`; the Overlord answers at `/api/overlord/ask` from the same records plus `get_marketing_summary()`.
+- **Run (zero keys):** `SESSION_SINK=local ENABLE_SIM=1 MARKETING_RADAR_OFFLINE=1 uv run uvicorn api.index:app --port 8000`, then `uv run python scripts/seed_demo_calls.py` and `uv run python scripts/seed_business.py --dry-run`; open `http://localhost:8000/`. Trigger a trend scan with `POST /api/jobs/marketing-scan`.
+- **Vercel:** `api/index.py` is the single function; `vercel.json` rewrites `/`, static assets and `/api/*` to it and runs the marketing jobs through `crons` → `/api/jobs/*` (Bearer `CRON_SECRET`). `SESSION_SINK=firestore` there; APScheduler only when `MARKETING_SCHEDULER=1` on a long-running host.
+- **Decisions:** `MARKETING_USER_ID` defaults to `BUSINESS_ID`; the Uncle Tony dataset in `data/business/uncle_tony/` and `config/capacity.yaml` are transcribed from the mockup and **owner-unverified**; grading rules (route/outcome labels, task success, handoff classes) are documented in `dashboard/analytics.py`.
+
 ## Status
 - [x] Repo scaffolding (CLAUDE.md, plans/, lessons/)
 - [x] App stack decided — Python 3.11 library for the marketing agent; dashboard/voice stack still open
@@ -50,6 +58,7 @@ Skim [lessons/](lessons/) for anything relevant to the area you're about to touc
 - [x] Marketing agent pass 2 — Like → script, draft expiry, chat tools, overlord helpers, route handlers (plan 0003)
 - [x] `handoff.md` for senior-engineer review (read it first if you are new here)
 - [ ] Live-key end-to-end scan (needs Firebase service account + ScrapeCreators + Gemini keys)
-- [ ] Dashboard / overlord
+- [x] Dashboard / overlord — plan 0005: UI served untouched with live data from both agents; offline demo seeded; pytest green
+- [ ] Dashboard on Vercel with Firestore (deploy, `scripts/seed_business.py`, `scripts/seed_demo_calls.py --sink firestore`, cron secret)
 - [x] Voice AI receptionist — plan 0004, phases 1–5 built offline; pytest gates green
 - [ ] Voice receptionist real-call gates (Twilio number, ElevenLabs greeting render, Calendar, email) — docs/setup-checklist.md

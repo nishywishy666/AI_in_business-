@@ -1,7 +1,7 @@
 # Handoff — AI in Business hackathon repo
 
 **For:** a senior software engineer reviewing this work, and the coding agent they will point at it.
-**State on 2026-09-13:** two subsystems built offline-first with zero live credentials: the **marketing analysis agent** (`marketing_radar/`, committed) and the **voice AI receptionist** (`api/`, `services/`, `config/`, `contracts/`, uncommitted at the time of writing). `uv run pytest` runs both. Part 1 below is the marketing agent; **Part 2 (bottom) is the voice receptionist**.
+**State on 2026-09-14:** three subsystems built offline-first with zero live credentials: the **marketing analysis agent** (`marketing_radar/`), the **voice AI receptionist** (`api/`, `services/`, `config/`, `contracts/`) and the **dashboard / overlord** (`dashboard/`, plan 0005) that serves the Claude Design export in `UI/` untouched and feeds it from the other two. `uv run pytest` runs everything. Part 1 below is the marketing agent, **Part 2 is the voice receptionist**, **Part 3 (bottom) is the dashboard**.
 
 ---
 
@@ -205,3 +205,53 @@ Twilio POSTs `/api/voice/incoming` (signature validated against `PUBLIC_BASE_URL
 3. Fill `config/pricing.yaml`, the `TODO(spec)` wordings in `templates.py`, and the email bodies with the owner.
 4. Replace per-turn STT with the Scribe v2 realtime stream if partial transcripts matter for the demo HUD.
 5. Keep the process: `plans/000N-*.md` before work, `lessons/000N-*.md` after any bug.
+
+---
+
+# Part 3 — Dashboard / Overlord (the web app)
+
+**Plan + decisions:** [plans/0005-dashboard-wiring.md](plans/0005-dashboard-wiring.md). **Metric contract:** `UI/UI mockups project scope/uploads/metrics.md`. **Lesson:** [lessons/0005-gemini-thinking-models-spend-the-output-budget.md](lessons/0005-gemini-thinking-models-spend-the-output-budget.md).
+
+## 1. What this is
+
+`UI/UI mockups project scope/Uncle Tony Overlord Dashboard.dc.html` is a Claude Design export (one template + the vendored `support.js` runtime) whose data was hard-coded in its script block. It is now the product's front end, byte-identical: `dashboard/ui.py` serves it at `/`, rewrites the few numbers that were literal in the markup into template bindings, and appends `dashboard/bridge.js` inside the `<script data-dc-script>` block. The bridge runs after the design's `Component` class in the same scope (that is how `support.js` evaluates the block), loads `/api/dashboard/bootstrap` on mount, overrides the values `renderVals()` used to hard-code, and routes Like / Save / chat / Mark done / Approve / Dismiss / Overlord questions / period selector / notification toggles to the API.
+
+## 2. Package map
+
+```
+dashboard/
+  settings.py   config/dashboard.yaml → DashboardSettings (tz, opening hours, bands, assumptions)
+  records.py    CallRecord/TurnRecord/BookingRecord/CallbackRecord/ReviewRecord; LocalJsonlSource (.testruns) and FirestoreSource
+  analytics.py  metrics.md P0 formulas, pure; grading rules in the docstring
+  present.py    entities → the template's shapes (callsData rows, tiles, KPIs, menu/packet/profile)
+  marketing.py  MarketingHub: ScanDeps (offline or Firestore), questionnaire seed, trend cards, Like/Save orchestration
+  overlord.py   grounded answer packet + Gemini transport (1024-token budget) + deterministic fallback
+  routes.py     /api/dashboard/*, /api/overlord/ask, /api/jobs/*
+  ui.py         page assembly (PATCHES table + bridge injection) and static mounts
+  bridge.js     the client bridge
+  app.py        mount_dashboard(app, config, deps) — called from api/index.py::create_app
+data/business/uncle_tony/   menu_items.json, facts.json, marketing_context.json (from the mockup; owner-unverified)
+scripts/seed_demo_calls.py  a week of calls through the REAL engine with scripted router output
+scripts/seed_business.py    capacitySlots + menu + facts + questionnaire → Firestore
+```
+
+## 3. Decisions taken here (not in either spec)
+
+- **Tenancy:** `MARKETING_USER_ID` defaults to `BUSINESS_ID`. The questionnaire is seeded from `data/business/<dataset>/marketing_context.json` when `users/{uid}/context` is empty (offline and Firestore; lesson 0001 path shape).
+- **Labels:** route = BOOK → Booking, CALLBACK → Callback, ANSWER_QUESTION → Question, else Chitchat. Outcome = Booked / Couldn't answer (any `not_found` turn) / Callback logged / Answered / Abandoned / Error. Task success: booked or answered-without-gap = success; gap or error = failure; callback/abandoned = unknown (excluded). Coherence = "No data" until a grader exists. Latency sample = agent-turn router+answer ms ("not caller-perceived"). Handoff classes in `config/dashboard.yaml`; unknown reasons stay visible as Unclassified.
+- **Marketing ↔ UI:** score is rank-normalised inside each list (top = 99); Like = `like_post` (angles + breakdown as the filming guide); Save = `choose_angle(post, 0)` + `save_script`; chat thread `ui`.
+- **Zero-key mode:** `SESSION_SINK=local` relaxes the required env (`services/common/config.py::local_config`), the engine answers from `JsonBusinessReader(data/business/…)`, the marketing agent runs on fixtures, the overlord answers from templates. The audio pipeline loads only when ElevenLabs is configured.
+- **Demo data label:** any `CAsim…` call flips the Analytics banner to "Demo data" (metrics.md asks for it).
+
+## 4. Unverified
+
+1. Vercel: `includeFiles` for the Python runtime and filesystem-vs-rewrite order for `/` have not been exercised on a real deployment; cron requests arrive as GET with `Authorization: Bearer $CRON_SECRET` (handled, untested live).
+2. Firestore reads use single-field queries only; turns are read per call (≤400 calls per snapshot, cached 15 s). A busy month may need `collection_group("turns")` + an index.
+3. The Uncle Tony prices/allergens/hours/40 seats are transcribed from the mockup — confirm with the owner.
+4. The design runtime loads React/Babel from unpkg at page load; the page needs internet even when the backend is offline.
+
+## 5. Next steps
+
+1. Deploy to Vercel with the `.env.example` variables, run `scripts/seed_business.py`, hit `/api/jobs/marketing-scan` once, open `/`.
+2. Real calls (Part 2 gates) then watch them land on the Voice AI calls screen; delete the `CAsim…` demo calls (or keep them and say so).
+3. Fill `config/pricing.yaml` so the Cost column and `ai_cost_per_minute_cents` in `config/dashboard.yaml` stop reading 0 / "No data".

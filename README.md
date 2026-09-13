@@ -55,4 +55,23 @@ uv run python scripts/seed_business.py --dry-run   # capacitySlots from config/c
 
 Before a demo: [docs/setup-checklist.md](docs/setup-checklist.md). Known limits: [docs/known-limits.md](docs/known-limits.md). Latency targets: [docs/latency-budget.md](docs/latency-budget.md).
 
-Dashboard folders will be added when that track starts.
+## Dashboard (the whole app) — quick start
+
+Plan: [plans/0005-dashboard-wiring.md](plans/0005-dashboard-wiring.md). Code: `dashboard/`, data: `data/business/uncle_tony/`, UI: `UI/` (a Claude Design export, served untouched).
+
+```bash
+uv sync --extra dev --extra voice
+uv run pytest                                      # marketing + voice + dashboard suites, no network
+
+# Whole app offline, zero keys: dashboard UI at /, JSON API, simulator at /sim, marketing fixtures
+SESSION_SINK=local ENABLE_SIM=1 MARKETING_RADAR_OFFLINE=1 uv run uvicorn api.index:app --port 8000
+uv run python scripts/seed_demo_calls.py --reset   # a week of Uncle Tony calls through the real engine → .testruns/
+curl -X POST localhost:8000/api/jobs/marketing-scan  # first trend scan (fixtures, zero credits)
+open http://localhost:8000/                        # Overview · Voice AI calls · Marketing · Callbacks · Analytics · Overlord
+
+# Live (Firestore + keys from .env.example)
+uv run python scripts/seed_business.py             # capacitySlots + menu + facts + marketing questionnaire
+uv run python scripts/seed_demo_calls.py --sink firestore   # optional demo calls (labelled "Demo data")
+```
+
+Deploy: `vercel.json` routes `/`, the UI assets and `/api/*` to `api/index.py` and runs the marketing jobs via Vercel Cron (`CRON_SECRET`). See [docs/setup-checklist.md](docs/setup-checklist.md).

@@ -25,8 +25,7 @@ import sys
 from pathlib import Path
 
 from .config import Settings
-from .db.json_backend import JsonFileBackend
-from .deps import build_deps
+from .deps import DEFAULT_FIXTURES, build_deps, offline_backend, offline_settings
 from .agent.chat import ChatSession
 from .agent.like import choose_angle, like_post
 from .jobs.daily_pull import daily_pull
@@ -34,22 +33,12 @@ from .jobs.expire_drafts import expire_drafts
 from .jobs.scan import run_offday_recap, run_paid_scan
 from .services import get_brief, get_marketing_summary, get_stats, list_scripts, save_script
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_FIXTURES = REPO_ROOT / "tests" / "fixtures"
-
-
 def _settings(args: argparse.Namespace) -> Settings:
     settings = Settings.from_env()
-    if args.offline:
-        settings.offline = True
-        settings.fixtures_dir = Path(args.fixtures) if args.fixtures else DEFAULT_FIXTURES
-        settings.scrapecreators_api_key = settings.scrapecreators_api_key or "offline"
-        settings.youtube_api_key = settings.youtube_api_key or "offline"
-        settings.gemini_api_key = settings.gemini_api_key or "offline"
     if args.cache_dir:
         settings.cache_root = Path(args.cache_dir)
-    if settings.cache_root is None and args.offline:
-        settings.cache_root = REPO_ROOT / ".marketing_radar_cache"
+    if args.offline:
+        offline_settings(settings, fixtures_dir=Path(args.fixtures) if args.fixtures else DEFAULT_FIXTURES)
     return settings
 
 
@@ -60,10 +49,8 @@ def _deps(args: argparse.Namespace):
         sys.exit("--user-id (or MARKETING_USER_ID) is required")
     backend = None
     if settings.offline:
-        backend = JsonFileBackend((settings.cache_root or DEFAULT_FIXTURES) / "offline_firestore.json")
-        context_path = settings.context_path(user_id)
-        if backend.get(context_path) is None:
-            backend.set(context_path, json.loads((settings.fixtures_dir / "context_map.json").read_text()))
+        seed = json.loads((settings.fixtures_dir / "context_map.json").read_text())
+        backend = offline_backend(user_id, settings, context_seed=seed)
     return build_deps(user_id, settings, backend=backend)
 
 

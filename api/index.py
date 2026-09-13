@@ -1,4 +1,5 @@
-"""Single ASGI entry for Vercel and uvicorn: mounts the voice routers (and /sim when ENABLE_SIM=1).
+"""Single ASGI entry for Vercel and uvicorn: mounts the voice routers, the dashboard (UI at `/`,
+JSON under /api/dashboard, /api/marketing, /api/overlord, /api/jobs — plan 0005) and /sim when ENABLE_SIM=1.
 
 `app` is created lazily (PEP 562 `__getattr__`) so importing this module in tests does not require
 the full environment, while a Vercel/uvicorn import of `api.index:app` fails fast at boot on a
@@ -37,9 +38,18 @@ def build_engine(config: VoiceConfig, sink: CallSink, bus: HudBus, *, reader=Non
     from services.voice.tools import FirestoreReader
 
     if reader is None:
-        from services.common.firestore import make_client
+        if sink.kind == "local":
+            # Offline: answer from the dashboard-owned dataset (data/business/<BUSINESS_DATASET>), plan 0005.
+            from config import load_yaml
+            from dashboard.settings import get_settings
+            from services.voice.tools import JsonBusinessReader
 
-        reader = FirestoreReader(make_client(config))
+            reader = JsonBusinessReader(get_settings().dataset_dir, config.business_id,
+                                        windows=list((load_yaml("capacity.yaml") or {}).get("windows") or []))
+        else:
+            from services.common.firestore import make_client
+
+            reader = FirestoreReader(make_client(config))
     if router is None:
         router = GroqTransport(config.groq_api_key, config.groq_router_model)
     if answerer is None:
@@ -100,13 +110,15 @@ def build_deps(config: VoiceConfig, *, sink: CallSink | None = None, engine: Tur
 
 
 def create_app(config: VoiceConfig | None = None, *, pipeline_factory: PipelineFactory | None = None,
-               deps: PipelineDeps | None = None) -> FastAPI:
+               deps: PipelineDeps | None = None, dashboard: bool = True) -> FastAPI:
     from api.voice import fallback, incoming, status, ws
 
     configure_logging()
     config = config or get_config()
-    deps = deps or build_deps(config, audio=True)
-    app = FastAPI(title="Voice AI Receptionist", docs_url=None, redoc_url=None)
+    # Audio providers only when ElevenLabs is configured; otherwise the socket echoes (Phase 1) and
+    # Mode A / the dashboard stay fully usable without keys.
+    deps = deps or build_deps(config, audio=bool(config.elevenlabs_api_key and config.elevenlabs_voice_id))
+    app = FastAPI(title="Uncle Tony Overlord Dashboard", docs_url=None, redoc_url=None)
     app.state.config = config
     app.state.deps = deps
     app.state.used_tokens = UsedTokenCache()
@@ -124,6 +136,10 @@ def create_app(config: VoiceConfig | None = None, *, pipeline_factory: PipelineF
         from api.sim.app import mount_sim
 
         mount_sim(app, config, deps)
+    if dashboard:
+        from dashboard.app import mount_dashboard
+
+        mount_dashboard(app, config, deps)
     return app
 
 
