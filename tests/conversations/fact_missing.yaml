@@ -1,0 +1,11 @@
+name: fact_missing
+asserts: A missing facts/ document → callback, no invention
+turns:
+  - caller: "is there parking nearby?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.85, question: "is there parking nearby?"}
+    expect:
+      answer_source: not_found
+      tool_called: take_callback
+      callback_reason: no_data
+      no_gemini_call: true
+      reply_contains: ["call you back"]

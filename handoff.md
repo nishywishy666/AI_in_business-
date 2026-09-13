@@ -1,7 +1,11 @@
-# Handoff — Marketing Radar (marketing analysis agent)
+# Handoff — AI in Business hackathon repo
 
 **For:** a senior software engineer reviewing this work, and the coding agent they will point at it.
-**State on 2026-09-13:** spec §16 steps 1–14 implemented offline-first, 117 tests green, nothing committed yet, no live credentials have ever been used.
+**State on 2026-09-13:** two subsystems built offline-first with zero live credentials: the **marketing analysis agent** (`marketing_radar/`, committed) and the **voice AI receptionist** (`api/`, `services/`, `config/`, `contracts/`, uncommitted at the time of writing). `uv run pytest` runs both. Part 1 below is the marketing agent; **Part 2 (bottom) is the voice receptionist**.
+
+---
+
+# Part 1 — Marketing Radar (marketing analysis agent)
 
 ---
 
@@ -30,7 +34,7 @@ A Python 3.11 **library** (`marketing_radar/`) the parent dashboard imports. Onc
 
 ```bash
 uv sync --extra dev
-uv run pytest                                   # 117 tests, ~1s, no network
+uv run pytest                                   # whole repo: 296 tests (117 marketing + voice), ~5s, no network
 
 c() { uv run python -m marketing_radar.cli --offline --user-id demo "$@"; }
 c reset; c scan; c brief; c stats               # paid scan → ScanBrief, usage snapshot
@@ -129,3 +133,75 @@ Standalone app or server, questionnaire UI, Marketing-section HTML/React (parent
 3. Build the parent Marketing section against `RadarApi` (empty state, board, Like → angles → script → save, saved library, chat, header pills from `get_stats()`, banners from `alerts[]` saying reset vs never-reset).
 4. Wire `start_marketing_radar(user_id)` into the parent's startup and the overlord's prompt per `OVERLORD.md`.
 5. Keep the process: new work → `plans/000N-*.md` first; any bug → `lessons/000N-*.md`.
+
+---
+
+# Part 2 — Voice AI Receptionist
+
+**Spec (source of truth):** [plans/voice-receptionist/vr_plan.md](plans/voice-receptionist/vr_plan.md) — a build contract with its own rules (R0–R7) and locked decisions (V1–V12). **Plan + outcome:** [plans/0004-voice-receptionist.md](plans/0004-voice-receptionist.md). **Lessons:** [lessons/0003-mulaw-encoder-bias-is-14-bit.md](lessons/0003-mulaw-encoder-bias-is-14-bit.md), [lessons/0004-barge-in-must-cancel-tts-in-flight.md](lessons/0004-barge-in-must-cancel-tts-in-flight.md). **Docs the spec asked for:** [docs/latency-budget.md](docs/latency-budget.md), [docs/known-limits.md](docs/known-limits.md), [docs/setup-checklist.md](docs/setup-checklist.md).
+
+## 1. What was built, by phase (vr_plan.md §13)
+
+| Phase | Built | pytest gate | Real-call gate |
+| --- | --- | --- | --- |
+| 1 Twilio plumbing | `api/voice/{incoming,ws,status,fallback}.py`, `api/index.py`, `services/voice/{twiml,signature,audio,stream}.py`, `scripts/{render_greeting.py,warm.sh,tunnel.sh}`, `vercel.json` (`syd1`, 300 s) | `test_signature.py`, `test_audio.py` (cross-checked against `audioop` for all 65k int16 values), `test_twilio_stream.py` | deferred — needs a Twilio number + tunnel |
+| 2 Simulator | `api/sim/app.py` + `sim.html` (Mode A text harness, Mode B mic → 8 kHz μ-law → **production** `/api/voice/ws`), `services/voice/sinks.py`, `telemetry.py` (HUD bus), `scripts/replay.py` | `test_sim_isolation.py` (LocalJsonlSink has no Firestore client; sim refuses to mount with a Firestore sink; `ws.py` has zero simulator branches by AST), `test_sim.py` (JS μ-law encoder + envelopes byte-identical to Python, checked with node) | — |
+| 3 Routing + grounded answering | `services/voice/{router,answerer,tools,engine,templates}.py`, `config/fact_synonyms.yaml` | the ten `tests/conversations/*.yaml` suites through Mode A (`test_grounding.py`), `test_router.py` | — |
+| 4 Booking + email | `services/voice/{booking_machine,email_capture}.py`, `services/booking/{capacity,commit,calendar,email}.py`, `scripts/seed_business.py` | `test_booking_machine.py`, `test_email_capture.py`, `test_booking_concurrency.py` (20 threads × 50 iterations, lock-based and simulated-optimistic) | deferred — real Firestore transaction, Calendar, email |
+| 5 Resume, telemetry, hardening | `services/voice/{call_pipeline,providers}.py`, cutover timers, status-callback outcome, rollups, `config/pricing.yaml` | `test_call_pipeline.py` (audio turn end-to-end with fake VAD/STT/TTS, barge-in, cutover → resume, resumeCount > 3, status callback) | deferred — a call held past 280 s |
+
+Run everything: `uv run pytest`. Run the simulator: `ENABLE_SIM=1 SESSION_SINK=local uv run uvicorn api.index:app --port 8000` → `http://localhost:8000/sim`.
+
+## 2. Architecture in one paragraph
+
+Twilio POSTs `/api/voice/incoming` (signature validated against `PUBLIC_BASE_URL`, never `request.url`), gets `<Connect><Stream>` with a 60 s HMAC token, and opens `/api/voice/ws`. `api/voice/ws.py` verifies the token (replay-safe), builds a `CallSession`, and hands every envelope to a `MediaHandler` from the pipeline factory — `ReceptionistPipeline` in production (VAD → end-of-turn → STT → `ReceptionistTurnEngine` → TTS with `clear` on barge-in and a server-side close at 280 s), or `EchoPipeline` when no audio providers are configured. `services/voice/engine.py` is the one per-turn brain: Groq router (one schema-constrained call, repair once, then CALLBACK) → deterministic booking machine (templates only, never Gemini) or `tools.answer_question` (confirmed Firestore data only) → Gemini phrasing with a template fallback on timeout, `CROSS_CONTACT` appended by Python. The simulator's `POST /sim/text` calls that same engine, so Mode A tests the production path. All writes go through a `CallSink`; the simulator's `LocalJsonlSink` cannot reach Firestore by construction.
+
+## 3. What is deliberately NOT decided (R0) — every `TODO(spec)` in the tree
+
+`grep -rn "TODO(spec)"` is authoritative; at handoff time:
+
+- `config/capacity.yaml` — service windows, slot length, seats per window (empty; `seed_business.py` refuses to run).
+- Business data — menu items, facts, allergen maps, `BUSINESS_ID`. Owned by the dashboard team. `tests/fixtures/business/` is test-only.
+- `config/pricing.yaml` — every rate is 0; `costCents` is recorded as 0 with units kept.
+- `config/fact_synonyms.yaml` — the question → lookup mapping §10 leaves to "Python".
+- `services/voice/templates.py` — every utterance the spec describes but does not word (fallback apology, re-asks, callback lines, chit-chat fallback, resume-limit goodbye).
+- `services/voice/booking_machine.py` — default meridiem for a bare "seven"; what to change when the caller says "no" at confirm.
+- `services/voice/session.py` — who writes `historySummary` (Python does, no model).
+- `services/voice/tools.py` / `scripts/render_greeting.py` — the runtime source of `{business_name}` (reads `facts/business_name` if present).
+- `services/voice/providers.py` — where the Silero / Smart Turn ONNX files come from; Smart Turn's exact input features; the Scribe v2 *realtime* websocket contract (STT is one request per turn today).
+- `services/booking/{email,calendar}.py` — email wording; where the daily Calendar retry cron runs.
+- `api/sim/sim.html` — what "telephony fidelity OFF" should transmit (the socket only accepts 8 kHz μ-law).
+
+## 4. Deviations from the letter of the spec (each flagged in code)
+
+1. A fifth `<Parameter name="from">` on the `<Stream>` (§6.1 lists four) so the booking machine can offer caller ID.
+2. Hand-rolled asyncio media loop on onnxruntime instead of Pipecat (user decision; §5 named Pipecat).
+3. `api/index.py` as the single ASGI entry (Vercel treats each `api/*.py` as its own function); `vercel.json` rewrites `/api/*` to it.
+4. Extra modules beyond §5: `engine.py`, `call_pipeline.py`, `providers.py`, `services/booking/*`, listed in plan 0004.
+5. Phonetic confirmation of confusable letters is one combined question after spelling, not letter-by-letter.
+6. Two Firestore trees coexist: marketing `users/{uid}/marketingRadar/**` vs voice `businesses/{businessId}/**`. Not reconciled — R2 forbids touching the marketing tree and R0 forbids inventing a mapping.
+
+## 5. Unverified against live services
+
+- Twilio: the exact `start`/`media`/`mark` field names follow the docs quoted in the spec; the signature-validation URL reconstruction is tested but not against a real tunnel.
+- ElevenLabs: SDK method names (`text_to_speech.stream` / `convert_as_stream`, `speech_to_text.convert`) resolved defensively at runtime.
+- Gemini: model ids in `config/thresholds.yaml` are intersected with `ListModels()` at boot; none of the preferred ids were checked against a key.
+- Groq: JSON mode via `response_format={"type": "json_object"}`.
+- Firestore: `FirestoreCommitter` is the §8.3 transaction shape; only the shared `decide()` arithmetic is exercised offline.
+- Google Calendar: event id = idempotency key (hex ⊂ base32hex); 409 → update.
+
+## 6. Suggested review focus
+
+- `api/voice/ws.py` + `services/voice/signature.py` — token TTL/replay, close semantics after a server-side cutover.
+- `services/voice/call_pipeline.py` — barge-in guard, the turn-task/TTS-task lifecycle, `finalize()` idempotency, what `_outcome()` writes vs what the status callback overrides.
+- `services/booking/commit.py` — confirm the transaction reads the slot doc and never a query; run `test_booking_concurrency.py` against the emulator.
+- `services/voice/booking_machine.py` — parser edge cases (dates past year end, "next Friday" semantics), the email phases state machine.
+- `services/voice/tools.py::answer_question` — the mapping is heuristic; decide whether that is acceptable or should become a second Groq call.
+
+## 7. Next steps for the receiving agent
+
+1. Get keys → `scripts/tunnel.sh` → real call echo (Phase 1 gate) → render the greeting → `models/*.onnx` → real call with intelligence.
+2. Get the business dataset and `capacity.yaml` from the dashboard team → `scripts/seed_business.py` → deploy Firestore rules/indexes.
+3. Fill `config/pricing.yaml`, the `TODO(spec)` wordings in `templates.py`, and the email bodies with the owner.
+4. Replace per-turn STT with the Scribe v2 realtime stream if partial transcripts matter for the demo HUD.
+5. Keep the process: `plans/000N-*.md` before work, `lessons/000N-*.md` after any bug.

@@ -1,0 +1,8 @@
+name: disclosure
+asserts: First utterance contains the AI + recording + third-party line (Rule 3)
+turns:
+  - caller: "hi there"
+    router: {intent: CHITCHAT, confidence: 0.9}
+    expect:
+      greeting_contains: ["AI assistant", "recorded", "third-party AI services", "Toastie Test Kitchen"]
+      intent: CHITCHAT

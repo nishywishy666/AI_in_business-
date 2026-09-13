@@ -1,0 +1,11 @@
+name: gemini_timeout
+asserts: Gemini stubbed to time out → template fallback speaks the real fact
+answerer: timeout
+turns:
+  - caller: "what are your opening hours?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "what are your opening hours?"}
+    expect:
+      answer_source: fact
+      used_fallback: true
+      reply_contains: ["7am to 3pm, Monday to Saturday"]
+      warnings_contain: ["gemini fallback"]

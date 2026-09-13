@@ -39,3 +39,10 @@ previous_work/
 
 # Logs
 *.log
+
+# Simulator run logs (vr_plan.md §12.3)
+.testruns/
+# Pre-rendered greeting audio + ONNX models are build artefacts
+assets/voice/*.wav
+assets/voice/*.ulaw
+models/*.onnx

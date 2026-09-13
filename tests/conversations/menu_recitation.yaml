@@ -1,0 +1,11 @@
+name: menu_recitation
+asserts: Never returns more than three items (Rule 7)
+turns:
+  - caller: "what toasties do you have?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "what toasties do you have?"}
+    expect:
+      tool_called: get_section_items
+      answer_source: menu
+      max_items_in_tool_result: 3
+      tool_result_has: {remaining_count: 1}
+      reply_mentions_at_most: 3

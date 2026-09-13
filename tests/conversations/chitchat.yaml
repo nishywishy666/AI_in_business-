@@ -1,0 +1,12 @@
+name: chitchat
+asserts: One short line, no facts asserted
+answerer_reply: "Doing great, thanks for calling!"
+turns:
+  - caller: "how's your day going?"
+    router: {intent: CHITCHAT, confidence: 0.95}
+    expect:
+      intent: CHITCHAT
+      tool_called: null
+      reply_max_words: 15
+      reply_not_contains: ["$", "7am", "Fitzroy", "Toastie", "toastie"]
+      gemini_prompt_not_contains: ["7am", "Fitzroy", "1250", "$12.50"]

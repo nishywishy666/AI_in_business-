@@ -1,0 +1,30 @@
+# The Australian declarable allergens (FSANZ Food Standards Code, Standard 1.2.3 / Plain English
+# Allergen Labelling). Keys are the allergen ids used in each menuItem's `allergens` map (§10).
+# An entry missing from an item's map, or with confirmed != true, is UNKNOWN → refuse + callback (Rule 2).
+allergens:
+  - id: peanut
+    label: peanuts
+  - id: tree_nut
+    label: tree nuts
+    includes: [almond, brazil_nut, cashew, hazelnut, macadamia, pecan, pine_nut, pistachio, walnut]
+  - id: milk
+    label: milk
+  - id: egg
+    label: egg
+  - id: sesame
+    label: sesame
+  - id: fish
+    label: fish
+  - id: crustacea
+    label: crustacea
+  - id: mollusc
+    label: molluscs
+  - id: soy
+    label: soy
+  - id: gluten
+    label: gluten
+    includes: [wheat, barley, rye, oats]
+  - id: lupin
+    label: lupin
+  - id: sulphite
+    label: sulphites

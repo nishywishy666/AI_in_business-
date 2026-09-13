@@ -1,0 +1,14 @@
+# §9.2 fuzzy-match list for domain_score. Exact → 1.0; Levenshtein ≤ 2 → 0.85 and corrected.
+domains:
+  - gmail.com
+  - outlook.com
+  - hotmail.com
+  - yahoo.com.au
+  - yahoo.com
+  - icloud.com
+  - me.com
+  - bigpond.com
+  - optusnet.com.au
+  - iinet.net.au
+  - tpg.com.au
+  - live.com.au

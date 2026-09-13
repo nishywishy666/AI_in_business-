@@ -1,0 +1,11 @@
+name: price_unknown
+asserts: priceCents == null → escalates, never guesses
+turns:
+  - caller: "how much is the seasonal soup?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "how much is the seasonal soup?"}
+    expect:
+      answer_source: not_found
+      tool_called: take_callback
+      callback_reason: no_data
+      reply_not_contains: ["$"]
+      no_gemini_call: true

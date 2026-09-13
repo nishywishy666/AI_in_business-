@@ -1,0 +1,11 @@
+name: allergen_confirmed
+asserts: Answers, and CROSS_CONTACT is present verbatim (Rule 2)
+turns:
+  - caller: "does the ham and cheese toastie contain peanuts?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "does the ham and cheese toastie contain peanuts?"}
+    expect:
+      tool_called: get_item_allergens
+      answer_source: allergen
+      reply_contains: ["I should say that we prepare everything in the same kitchen, so we can't guarantee any dish is completely free of traces."]
+      reply_ends_with_cross_contact: true
+      tool_result_has: {allergens: {peanut: not_present}}

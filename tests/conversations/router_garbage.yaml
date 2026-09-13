@@ -1,0 +1,16 @@
+name: router_garbage
+asserts: Two unparseable Groq responses → CALLBACK, call still alive
+turns:
+  - caller: "blorp fizzle"
+    router_raw: ["this is not json", "{still: broken"]
+    expect:
+      intent: CALLBACK
+      confidence: 0.0
+      warnings_contain: ["router_fallback_callback"]
+      tool_called: take_callback
+      reply_nonempty: true
+  - caller: "hello?"
+    router: {intent: CHITCHAT, confidence: 0.9}
+    expect:
+      intent: CHITCHAT
+      reply_nonempty: true

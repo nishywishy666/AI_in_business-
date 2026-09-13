@@ -20,13 +20,29 @@ dependencies = [
 dev = [
     "pytest>=8.3,<9",
 ]
+# Voice AI receptionist (plans/voice-receptionist/vr_plan.md). Kept separate so the marketing
+# agent's install is unchanged. requirements.txt mirrors this for Vercel. No torch (§3).
+voice = [
+    "fastapi>=0.115,<1",
+    "uvicorn[standard]>=0.30,<1",
+    "python-multipart>=0.0.9",
+    "twilio>=9.3,<10",
+    "numpy>=1.26,<3",
+    "scipy>=1.13,<2",
+    "pyyaml>=6.0,<7",
+    "onnxruntime>=1.18,<2",
+    "groq>=0.11,<1",
+    "elevenlabs>=1.50,<3",
+    "websockets>=12,<15",
+    "google-api-python-client>=2.140,<3",
+]
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["marketing_radar"]
+packages = ["marketing_radar", "services", "contracts", "config", "api"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

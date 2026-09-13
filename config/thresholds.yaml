@@ -1,0 +1,29 @@
+# Every tunable number for the voice receptionist, named, in one place (vr_plan.md §14).
+# Do not scatter literals through the code; read these via config.threshold("NAME").
+
+ROUTER_MIN_CONFIDENCE: 0.6          # §7.1 below this, do not guess and do not clarify every turn
+EMAIL_CONFIDENCE_THRESHOLD: 0.80    # §9.3 read back once above; spell the local part below
+MAX_EMAIL_SPELL_ATTEMPTS: 2         # §9.3 then the booking completes with emailCaptureFailed=true
+MAX_FIELD_ATTEMPTS: 2               # §8.2 exceeding it (except email) routes to CALLBACK
+MAX_PARTY: 12                       # §8.2 over this → CALLBACK, large group
+LARGE_GROUP_THRESHOLD: 10           # §7.1 router flags CALLBACK when the caller mentions more than this
+MAX_REPLY_WORDS: 40                 # §7.2 Gemini reply ceiling
+GEMINI_TIMEOUT_MS: 1200             # §7.2 then the template fallback speaks the retrieved fact
+GROQ_TIMEOUT_MS: 800                # §7.1
+STREAM_CUTOVER_MS: 280000           # §6.6 close the socket proactively before Vercel's 300 s
+CUTOVER_WARN_MS: 240000             # §6.6 "I might need to put you on hold for a second"
+MAX_RESUMES: 3                      # §6.6 beyond this, end gracefully with a callback
+
+# §7.2 Gemini answering model: resolved at startup by intersecting with ListModels(). Never *-preview, never Pro.
+GEMINI_MODEL_PREFERENCE:
+  - gemini-3.8-flash
+  - gemini-3.6-flash
+  - gemini-3.5-flash
+  - gemini-3.5-flash-lite
+
+# §6.5 guard after agent speech starts, to suppress trailing artefacts
+BARGE_IN_GUARD_MS: 150
+# §6.3 WebSocket token TTL
+WS_TOKEN_TTL_S: 60
+# §8.3 capacity slots materialised ahead by scripts/seed_business.py
+CAPACITY_SEED_DAYS: 60

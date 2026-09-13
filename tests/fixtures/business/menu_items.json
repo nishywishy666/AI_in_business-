@@ -1,0 +1,63 @@
+{
+  "ham_cheese": {
+    "name": "Ham and Cheese Toastie",
+    "section": "toasties",
+    "priceCents": 1250,
+    "confirmedByOwner": true,
+    "dietaryTags": [],
+    "allergens": {
+      "gluten": {"status": "contains", "confirmed": true},
+      "milk": {"status": "contains", "confirmed": true},
+      "peanut": {"status": "not_present", "confirmed": true},
+      "sesame": {"status": "contains", "confirmed": false}
+    }
+  },
+  "mushroom_melt": {
+    "name": "Mushroom Melt",
+    "section": "toasties",
+    "priceCents": 1400,
+    "confirmedByOwner": true,
+    "dietaryTags": ["vegetarian"],
+    "allergens": {}
+  },
+  "reuben": {
+    "name": "Reuben",
+    "section": "toasties",
+    "priceCents": 1650,
+    "confirmedByOwner": true,
+    "dietaryTags": [],
+    "allergens": {"gluten": {"status": "contains", "confirmed": true}}
+  },
+  "tuna_melt": {
+    "name": "Tuna Melt",
+    "section": "toasties",
+    "priceCents": 1500,
+    "confirmedByOwner": true,
+    "dietaryTags": [],
+    "allergens": {"fish": {"status": "contains", "confirmed": true}}
+  },
+  "flat_white": {
+    "name": "Flat White",
+    "section": "drinks",
+    "priceCents": 480,
+    "confirmedByOwner": true,
+    "dietaryTags": [],
+    "allergens": {"milk": {"status": "contains", "confirmed": true}}
+  },
+  "seasonal_soup": {
+    "name": "Seasonal Soup",
+    "section": "sides",
+    "priceCents": null,
+    "confirmedByOwner": true,
+    "dietaryTags": [],
+    "allergens": {}
+  },
+  "secret_special": {
+    "name": "Secret Special",
+    "section": "toasties",
+    "priceCents": 999,
+    "confirmedByOwner": false,
+    "dietaryTags": [],
+    "allergens": {"peanut": {"status": "contains", "confirmed": true}}
+  }
+}

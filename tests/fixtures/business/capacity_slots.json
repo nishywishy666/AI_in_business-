@@ -1,0 +1,14 @@
+{
+  "2026-09-19T1900": {"businessId": "biz_test", "date": "2026-09-19", "time": "19:00", "seatsTotal": 40, "seatsBooked": 36},
+  "2026-09-19T1830": {"businessId": "biz_test", "date": "2026-09-19", "time": "18:30", "seatsTotal": 40, "seatsBooked": 40},
+  "2026-09-19T1930": {"businessId": "biz_test", "date": "2026-09-19", "time": "19:30", "seatsTotal": 40, "seatsBooked": 10},
+  "2026-09-19T1800": {"businessId": "biz_test", "date": "2026-09-19", "time": "18:00", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-19T2000": {"businessId": "biz_test", "date": "2026-09-19", "time": "20:00", "seatsTotal": 40, "seatsBooked": 38},
+  "2026-09-19T1730": {"businessId": "biz_test", "date": "2026-09-19", "time": "17:30", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-25T1900": {"businessId": "biz_test", "date": "2026-09-25", "time": "19:00", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-20T1200": {"businessId": "biz_test", "date": "2026-09-20", "time": "12:00", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-18T1900": {"businessId": "biz_test", "date": "2026-09-18", "time": "19:00", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-18T1930": {"businessId": "biz_test", "date": "2026-09-18", "time": "19:30", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-18T1200": {"businessId": "biz_test", "date": "2026-09-18", "time": "12:00", "seatsTotal": 40, "seatsBooked": 0},
+  "2026-09-18T1230": {"businessId": "biz_test", "date": "2026-09-18", "time": "12:30", "seatsTotal": 40, "seatsBooked": 0}
+}

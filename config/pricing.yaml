@@ -1,0 +1,12 @@
+# Per-unit provider prices used for usageEvents.costCents and calls/{callSid}.costCents (vr_plan.md §11).
+#
+# TODO(spec): R0 says pricing must not be invented. Every rate below is 0 until the owner fills in
+# the current list prices. Units are always recorded, so cost can be recomputed later.
+#
+# cents_per_unit is applied to `units` of `unit_kind` for the matching provider+task.
+rates:
+  groq:            {unit_kind: tokens,   cents_per_unit: 0}
+  gemini:          {unit_kind: tokens,   cents_per_unit: 0}
+  elevenlabs_stt:  {unit_kind: seconds,  cents_per_unit: 0}
+  elevenlabs_tts:  {unit_kind: chars,    cents_per_unit: 0}
+  twilio:          {unit_kind: minutes,  cents_per_unit: 0}

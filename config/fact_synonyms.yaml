@@ -1,0 +1,23 @@
+# How Python maps an ANSWER_QUESTION turn to one of the five lookups in services/voice/tools.py.
+#
+# TODO(spec): vr_plan.md §10 says "the Groq router ... emits an intent; Python maps intent to
+# lookup" but does not say how a question is matched to a fact key, a menu item, a section or an
+# allergen. This file is that mapping. Keys under `facts` must be real document ids in
+# businesses/{businessId}/facts; a fact that does not exist is still "unknown → callback" (V9).
+#
+# Matching order in tools.answer_question(): allergen (allergen word present) → menu item (fuzzy
+# name) → section → fact (synonym hit) → not_found.
+
+facts:
+  hours: [hours, open, opening, close, closing, "what time", "when are you", "until when", today, tonight, weekend]
+  address: [address, where, located, location, "find you", street, suburb, directions]
+  phone: [phone, number, call, contact]
+  parking: [parking, park]
+  bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings"]
+
+allergen_words: [allergy, allergies, allergic, allergen, allergens, intolerance, intolerant, contain, contains,
+                 "free of", "free from", nut, nuts, peanut, peanuts, gluten, dairy, milk, egg, eggs, sesame, soy,
+                 fish, shellfish, prawn, prawns, crustacea, mollusc, lupin, sulphite, sulphites, celiac, coeliac,
+                 vegan, vegetarian]
+
+section_words: [menu, "what do you have", "what have you got", "what's on", options, specials, "kind of", "sort of"]

@@ -84,6 +84,37 @@ def seed_context(backend: MemoryBackend, context: dict) -> None:
     backend.set(f"users/{USER_ID}/context", context)
 
 
+# ---- voice receptionist (plans/voice-receptionist/vr_plan.md) ---------------------------
+
+VOICE_ENV = {
+    "PUBLIC_BASE_URL": "https://voice.example.test",
+    "TWILIO_ACCOUNT_SID": "ACtest",
+    "TWILIO_AUTH_TOKEN": "twilio-auth-token-for-tests",
+    "TWILIO_PHONE_NUMBER": "+61400000000",
+    "WS_TOKEN_SECRET": "ws-secret-for-tests",
+    "GROQ_API_KEY": "groq-test",
+    "GEMINI_API_KEY": "gemini-test",
+    "ELEVENLABS_API_KEY": "eleven-test",
+    "ELEVENLABS_VOICE_ID": "voice-test",
+    "BUSINESS_ID": "biz_test",
+    "FIREBASE_PROJECT_ID": "proj-test",
+    "FIREBASE_SA_JSON": '{"type":"service_account","project_id":"proj-test"}',
+    "GOOGLE_CALENDAR_ID": "owner@example.test",
+    "GOOGLE_SA_JSON": '{"type":"service_account","project_id":"proj-test"}',
+    "GMAIL_USER": "owner@example.test",
+    "GMAIL_APP_PASSWORD": "app-password",
+    "SESSION_SINK": "local",
+    "ENABLE_SIM": "0",
+}
+
+
+@pytest.fixture
+def voice_config():
+    from services.common.config import load_config
+
+    return load_config(VOICE_ENV)
+
+
 @pytest.fixture
 def sample_context_md() -> str:
     return (FIXTURES / "context.md").read_text()

@@ -1,0 +1,12 @@
+name: menu_question
+asserts: Answers from a confirmed item; the price spoken matches Firestore exactly
+turns:
+  - caller: "how much is the ham and cheese toastie?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.92, question: "how much is the ham and cheese toastie?"}
+    expect:
+      intent: ANSWER_QUESTION
+      tool_called: lookup_menu_item
+      answer_source: menu
+      used_fallback: false
+      reply_contains: ["$12.50"]
+      tool_result_has: {price_cents: 1250, name: "Ham and Cheese Toastie"}

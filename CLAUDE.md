@@ -35,6 +35,14 @@ Skim [lessons/](lessons/) for anything relevant to the area you're about to touc
 - **Handoff / integration docs:** [handoff.md](handoff.md) (review guide, decisions, unverified assumptions), [OVERLORD.md](OVERLORD.md) (read-only helpers for the main agent).
 - **Unverified assumption:** ScrapeCreators response field names in `tests/fixtures/scrapecreators/` are best-effort guesses; the first live scan must be used to correct `scoring/normalize.py`.
 
+## Voice AI receptionist (`api/`, `services/voice/`, `services/booking/`, `config/`, `contracts/`)
+
+- **Spec (source of truth):** [plans/voice-receptionist/vr_plan.md](plans/voice-receptionist/vr_plan.md). Its rules R0–R7 apply to any change here: never invent a requirement (emit `TODO(spec)`), build in phase order, do not touch the marketing agent, no secrets client-side, arithmetic in Python never in a model, Pydantic at every model boundary, `call_id` on every log line, the simulator drives the production code path.
+- **Shape:** a FastAPI app (`api/index.py`) answering Twilio Media Streams; `services/voice/engine.py` is the per-turn brain shared by the phone path and the simulator's Mode A; `services/voice/sinks.py` is the structural write isolation (`LocalJsonlSink` has no Firestore client).
+- **Run:** `ENABLE_SIM=1 SESSION_SINK=local uv run uvicorn api.index:app --port 8000` then open `/sim`. Real calls need the keys in `.env.example` plus `scripts/tunnel.sh`; see [docs/setup-checklist.md](docs/setup-checklist.md).
+- **Two Firestore trees coexist:** marketing writes `users/{uid}/marketingRadar/**`; voice writes `businesses/{businessId}/**`. Not reconciled (R2 + R0) — see plan 0004.
+- **Open items:** every `TODO(spec)` in the tree (`grep -rn "TODO(spec)"`), the real-call gates, ONNX model files, and the business dataset owned by the dashboard team.
+
 ## Status
 - [x] Repo scaffolding (CLAUDE.md, plans/, lessons/)
 - [x] App stack decided — Python 3.11 library for the marketing agent; dashboard/voice stack still open
@@ -43,4 +51,5 @@ Skim [lessons/](lessons/) for anything relevant to the area you're about to touc
 - [x] `handoff.md` for senior-engineer review (read it first if you are new here)
 - [ ] Live-key end-to-end scan (needs Firebase service account + ScrapeCreators + Gemini keys)
 - [ ] Dashboard / overlord
-- [ ] Voice AI receptionist
+- [x] Voice AI receptionist — plan 0004, phases 1–5 built offline; pytest gates green
+- [ ] Voice receptionist real-call gates (Twilio number, ElevenLabs greeting render, Calendar, email) — docs/setup-checklist.md

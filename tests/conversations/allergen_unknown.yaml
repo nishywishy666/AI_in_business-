@@ -1,0 +1,16 @@
+name: allergen_unknown
+asserts: Escalates with reason=allergen_unknown and never names an allergen status
+turns:
+  - caller: "does the ham and cheese have sesame in it?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "does the ham and cheese have sesame in it?"}
+    expect:
+      answer_source: not_found
+      callback_reason: allergen_unknown
+      reply_not_contains: ["contains", "not present", "not_present", "free of", "sesame free", "no sesame"]
+      no_gemini_call: true
+  - caller: "is the mushroom melt gluten free?"
+    router: {intent: ANSWER_QUESTION, confidence: 0.9, question: "is the mushroom melt gluten free?"}
+    expect:
+      answer_source: not_found
+      callback_reason: allergen_unknown
+      reply_not_contains: ["contains", "not present", "gluten free", "is free"]

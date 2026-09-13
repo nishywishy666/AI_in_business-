@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voice Receptionist Simulator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root { --bg:#0f1115; --panel:#171a21; --line:#2a2f3a; --fg:#e6e8ee; --dim:#8b93a7; --ok:#3ddc84; --warn:#ffb020; --bad:#ff5c5c; --acc:#6ea8fe; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  header { display:flex; gap:12px; align-items:center; padding:10px 16px; border-bottom:1px solid var(--line); background:var(--panel); flex-wrap:wrap; }
+  header h1 { font-size:15px; margin:0 12px 0 0; font-weight:600; }
+  button { background:var(--acc); color:#0b1020; border:0; border-radius:6px; padding:7px 12px; font:inherit; cursor:pointer; }
+  button.secondary { background:#2a2f3a; color:var(--fg); }
+  button:disabled { opacity:.5; cursor:default; }
+  label.toggle { display:flex; align-items:center; gap:6px; color:var(--dim); }
+  main { display:grid; grid-template-columns: 1.1fr 1fr; grid-template-rows: 1fr auto; gap:12px; padding:12px 16px; height: calc(100vh - 54px); }
+  section { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:10px 12px; overflow:auto; min-height:0; }
+  section h2 { margin:0 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--dim); }
+  #transcript .line { padding:4px 0; border-bottom:1px dashed var(--line); }
+  #transcript .caller::before { content:"caller  "; color:var(--acc); }
+  #transcript .agent::before { content:"agent   "; color:var(--ok); }
+  #transcript .partial { color:var(--dim); font-style:italic; }
+  .turn { border:1px solid var(--line); border-radius:6px; padding:8px; margin-bottom:8px; }
+  .badge { display:inline-block; padding:1px 6px; border-radius:4px; background:#2a2f3a; margin-right:6px; }
+  .badge.ok { background:#16412b; color:var(--ok); } .badge.warn { background:#4a3610; color:var(--warn); } .badge.bad { background:#4a1c1c; color:var(--bad); }
+  .bar { display:flex; height:10px; background:#0b0d12; border-radius:3px; overflow:hidden; margin-top:6px; }
+  .bar span { display:block; height:100%; }
+  .bar .stt{background:#3b82f6} .bar .router{background:#a855f7} .bar .answer{background:#f59e0b} .bar .tts{background:#10b981} .bar .over{background:var(--bad)}
+  #bottom { grid-column: 1 / span 2; display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  table { border-collapse:collapse; width:100%; } td, th { text-align:left; padding:3px 6px; border-bottom:1px solid var(--line); } th { color:var(--dim); font-weight:500; }
+  #warnings { grid-column: 1 / span 2; padding:8px 12px; border-radius:6px; background:#1d1d22; color:var(--dim); border:1px solid var(--line); }
+  #warnings.lit { background:#4a1c1c; color:#fff; border-color:var(--bad); }
+  pre { margin:0; white-space:pre-wrap; word-break:break-word; color:var(--dim); }
+  input[type=text] { flex:1; min-width:240px; background:#0b0d12; color:var(--fg); border:1px solid var(--line); border-radius:6px; padding:7px 10px; font:inherit; }
+  .status { color:var(--dim); }
+  @media (max-width: 900px) { main { grid-template-columns:1fr; height:auto; } #bottom { grid-column:1; grid-template-columns:1fr; } #warnings { grid-column:1; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Voice Receptionist — Simulator</h1>
+  <button id="call">Call (mic)</button>
+  <button id="hangup" class="secondary" disabled>Hang up</button>
+  <label class="toggle"><input type="checkbox" id="fidelity" checked> telephony fidelity (8 kHz μ-law)</label>
+  <input type="text" id="text" placeholder="Mode A — type a caller turn and press Enter">
+  <button id="send" class="secondary">Send text</button>
+  <span class="status" id="status">idle</span>
+</header>
+<main>
+  <section id="transcript"><h2>Transcript</h2><div id="lines"></div></section>
+  <section id="turns"><h2>Per turn</h2><div id="turnlist"></div></section>
+  <div id="bottom">
+    <section><h2>Slot state</h2><table id="slot"><tbody></tbody></table></section>
+    <section><h2>Email candidate</h2><table id="email"><tbody></tbody></table></section>
+    <div id="warnings">no warnings</div>
+  </div>
+</main>
+<script>
+(() => {
+  // ---------- state ----------
+  let ws = null, hud = null, audioCtx = null, mic = null, proc = null, playCtx = null;
+  let callId = null, streamSid = null, seq = 1, chunk = 1, tsMs = 0;
+  let playCursor = 0, scheduled = [], pendingMarks = [];
+  let budget = {};
+  const $ = (id) => document.getElementById(id);
+  const status = (t) => { $("status").textContent = t; };
+  fetch("/sim/budget").then(r => r.json()).then(b => budget = b);
+
+  // ---------- μ-law (same Sun/G.711 reference as services/voice/audio.py) ----------
+  const SEG_END = [0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF, 0x1FFF];
+  function lin2ulaw(sample) {            // int16 → byte
+    let pcm = sample >> 2, mask;
+    if (pcm < 0) { pcm = -pcm; mask = 0x7F; } else { mask = 0xFF; }
+    if (pcm > 8159) pcm = 8159;
+    pcm += 0x21;
+    let seg = 8; for (let i = 0; i < 8; i++) { if (pcm <= SEG_END[i]) { seg = i; break; } }
+    if (seg >= 8) return 0x7F ^ mask;
+    return (((seg << 4) | ((pcm >> (seg + 1)) & 0x0F)) ^ mask) & 0xFF;
+  }
+  const ULAW_TABLE = new Int16Array(256);
+  for (let b = 0; b < 256; b++) { const u = ~b & 0xFF; let t = ((u & 0x0F) << 3) + 0x84; t <<= (u & 0x70) >> 4; ULAW_TABLE[b] = (u & 0x80) ? (0x84 - t) : (t - 0x84); }
+  const b64 = (bytes) => btoa(String.fromCharCode(...bytes));
+  const unb64 = (s) => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+
+  // ---------- Twilio envelopes: key order matches services/voice/stream.py exactly ----------
+  const envConnected = () => JSON.stringify({event:"connected", protocol:"Call", version:"1.0.0"});
+  const envStart = (sid, cid, params) => JSON.stringify({event:"start", sequenceNumber:String(seq++), start:{streamSid:sid, accountSid:"ACsim", callSid:cid, tracks:["inbound"], customParameters:params, mediaFormat:{encoding:"audio/x-mulaw", sampleRate:8000, channels:1}}, streamSid:sid});
+  const envMedia = (sid, bytes) => JSON.stringify({event:"media", sequenceNumber:String(seq++), streamSid:sid, media:{track:"inbound", chunk:String(chunk++), timestamp:String(tsMs), payload:b64(bytes)}});
+  const envMark = (sid, name) => JSON.stringify({event:"mark", sequenceNumber:String(seq++), streamSid:sid, mark:{name}});
+  const envStop = (sid, cid) => JSON.stringify({event:"stop", sequenceNumber:String(seq++), stop:{accountSid:"ACsim", callSid:cid}, streamSid:sid});
+
+  // ---------- HUD ----------
+  function line(cls, text) { const d = document.createElement("div"); d.className = "line " + cls; d.textContent = text; $("lines").appendChild(d); $("lines").parentElement.scrollTop = 1e9; return d; }
+  let partialEl = null;
+  function onHud(ev) {
+    if (ev.event === "partial") { if (!partialEl) partialEl = line("caller partial", ""); partialEl.textContent = ev.text; return; }
+    if (ev.event === "turn") { const t = ev.turn; if (t.speaker === "caller") { if (partialEl) { partialEl.remove(); partialEl = null; } line("caller", t.textFinal); } else { line("agent", t.textFinal); } renderTurn(t); return; }
+    if (ev.event === "warning") { const w = $("warnings"); w.classList.add("lit"); w.textContent = "⚠ " + ev.message; return; }
+    if (ev.event === "greeting") { line("agent", ev.played ? "[pre-rendered greeting played]" : "[greeting asset missing — run scripts/render_greeting.py]"); return; }
+    if (ev.event === "slot") { renderSlot(ev.slot); return; }
+    if (ev.event === "email") { renderEmail(ev.candidate); return; }
+    if (ev.event === "media" || ev.event === "mark" || ev.event === "ping" || ev.event === "hud_ready" || ev.event === "start" || ev.event === "stop") return;
+  }
+  function renderTurn(t) {
+    const d = document.createElement("div"); d.className = "turn";
+    const conf = t.routerConfidence == null ? "" : `<span class="badge ${t.routerConfidence >= 0.6 ? "ok" : "warn"}">${t.routerConfidence.toFixed(2)}</span>`;
+    const src = t.answerSource ? `<span class="badge ${t.answerSource === "template" ? "warn" : "ok"}">${t.answerSource}${t.usedFallback ? " · fallback" : ""}</span>` : "";
+    d.innerHTML = `<div><span class="badge">#${t.turnIndex} ${t.speaker}</span>${t.intent ? `<span class="badge ok">${t.intent}</span>` : ""}${conf}${src}${t.toolCalled ? `<span class="badge">${t.toolCalled}</span>` : ""}</div>` + bar(t);
+    $("turnlist").prepend(d);
+  }
+  function bar(t) {
+    const stages = [["stt", t.sttMs], ["router", t.routerMs], ["answer", t.answerMs], ["tts", t.ttsMs]].filter(s => s[1]);
+    const total = stages.reduce((a, s) => a + s[1], 0); if (!total) return "";
+    const limit = (budget.first_audio_qa_ms || [0, 1400])[1];
+    const width = Math.max(total, limit);
+    return `<div class="bar">${stages.map(s => `<span class="${s[0]}" style="width:${(s[1] / width) * 100}%" title="${s[0]} ${s[1]}ms"></span>`).join("")}${total > limit ? `<span class="over" style="width:2px"></span>` : ""}</div><pre>${stages.map(s => `${s[0]} ${s[1]}ms`).join(" · ")} · total ${total}ms (Q&A budget ≤ ${limit}ms)</pre>`;
+  }
+  function renderSlot(slot) { const tb = $("slot").querySelector("tbody"); tb.innerHTML = Object.entries(slot || {}).map(([k, v]) => `<tr><th>${k}</th><td>${JSON.stringify(v)}</td></tr>`).join(""); }
+  function renderEmail(c) { const tb = $("email").querySelector("tbody"); tb.innerHTML = c ? Object.entries(c).map(([k, v]) => `<tr><th>${k}</th><td>${JSON.stringify(v)}</td></tr>`).join("") : "<tr><td>—</td></tr>"; }
+  function connectHud(id) { hud = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/sim/hud/${id}`); hud.onmessage = (m) => onHud(JSON.parse(m.data)); }
+
+  // ---------- Mode A ----------
+  async function sendText() {
+    const text = $("text").value.trim(); if (!text) return; $("text").value = "";
+    if (!callId) { callId = null; }
+    const r = await fetch("/sim/text", {method:"POST", headers:{"content-type":"application/json"}, body: JSON.stringify({text, call_id: callId})});
+    const res = await r.json();
+    if (!callId) { callId = res.call_id; connectHud(callId); status(`text session ${callId}`); }
+    line("caller", text); if (res.reply_text) line("agent", res.reply_text);
+    renderSlot(res.slot_after); renderEmail(res.email_candidate);
+    const t = {turnIndex: res.turn_index, speaker: "agent", intent: res.intent, routerConfidence: res.confidence, toolCalled: res.tool_called, answerSource: res.answer_source, usedFallback: res.used_fallback, sttMs: 0, routerMs: res.timings_ms.router, answerMs: res.timings_ms.answer, ttsMs: res.timings_ms.tts};
+    renderTurn(t);
+    if (res.warnings && res.warnings.length) { const w = $("warnings"); w.classList.add("lit"); w.textContent = "⚠ " + res.warnings.join(" | "); }
+  }
+  $("send").onclick = sendText; $("text").addEventListener("keydown", (e) => { if (e.key === "Enter") sendText(); });
+
+  // ---------- Mode B ----------
+  async function startCall() {
+    if (!$("fidelity").checked) {
+      // TODO(spec): the production socket only accepts 8 kHz μ-law envelopes, so a "fidelity off"
+      // path has nothing valid to send. Left disabled until the spec says what OFF should transmit.
+      alert("Telephony fidelity must stay on: the production /api/voice/ws accepts only 8 kHz μ-law."); $("fidelity").checked = true; return;
+    }
+    const info = await (await fetch("/sim/token")).json();
+    callId = info.call_id; streamSid = info.stream_sid; seq = 1; chunk = 1; tsMs = 0;
+    connectHud(callId);
+    playCtx = new (window.AudioContext || window.webkitAudioContext)(); playCursor = playCtx.currentTime;
+    ws = new WebSocket(`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}${info.ws_path}`);
+    ws.onopen = async () => {
+      ws.send(envConnected());
+      ws.send(envStart(streamSid, callId, {token: info.token, callSid: callId, businessId: info.business_id, resume: "0", from: "+61400000000"}));
+      status(`in call ${callId} (sink=${info.sink})`); $("call").disabled = true; $("hangup").disabled = false;
+      await startMic();
+    };
+    ws.onmessage = (m) => {
+      const msg = JSON.parse(m.data);
+      if (msg.event === "media") { play(unb64(msg.media.payload)); }
+      else if (msg.event === "mark") { pendingMarks.push({name: msg.mark.name, at: playCursor}); scheduleMarkEcho(); }
+      else if (msg.event === "clear") { clearPlayback(); }
+    };
+    ws.onclose = () => { status("call ended"); stopMic(); $("call").disabled = false; $("hangup").disabled = true; };
+  }
+  async function startMic() {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    mic = await navigator.mediaDevices.getUserMedia({audio: {channelCount: 1, echoCancellation: true, noiseSuppression: true}});
+    const src = audioCtx.createMediaStreamSource(mic);
+    proc = audioCtx.createScriptProcessor(1024, 1, 1);
+    const inRate = audioCtx.sampleRate, ratio = inRate / 8000; let acc = [], pos = 0;
+    proc.onaudioprocess = (e) => {
+      const input = e.inputBuffer.getChannelData(0);
+      for (; pos < input.length; pos += ratio) {      // linear-interpolated downsample to 8 kHz
+        const i = Math.floor(pos), f = pos - i, a = input[i], b = input[Math.min(i + 1, input.length - 1)];
+        const s = Math.max(-1, Math.min(1, a + (b - a) * f));
+        acc.push(lin2ulaw(Math.round(s * 32767)));
+        if (acc.length === 160) { if (ws && ws.readyState === 1) ws.send(envMedia(streamSid, Uint8Array.from(acc))); tsMs += 20; acc = []; }
+      }
+      pos -= input.length;
+    };
+    src.connect(proc); proc.connect(audioCtx.destination);
+  }
+  function stopMic() { if (proc) { proc.disconnect(); proc = null; } if (mic) { mic.getTracks().forEach(t => t.stop()); mic = null; } if (audioCtx) { audioCtx.close(); audioCtx = null; } }
+  function play(bytes) {
+    const buf = playCtx.createBuffer(1, bytes.length, 8000); const ch = buf.getChannelData(0);
+    for (let i = 0; i < bytes.length; i++) ch[i] = ULAW_TABLE[bytes[i]] / 32768;
+    const node = playCtx.createBufferSource(); node.buffer = buf; node.connect(playCtx.destination);
+    const at = Math.max(playCursor, playCtx.currentTime); node.start(at); playCursor = at + buf.duration; scheduled.push(node);
+  }
+  function clearPlayback() { scheduled.forEach(n => { try { n.stop(); } catch (e) {} }); scheduled = []; playCursor = playCtx.currentTime; pendingMarks = []; }
+  function scheduleMarkEcho() {              // Twilio echoes a mark once the audio before it has played
+    const m = pendingMarks.shift(); if (!m) return;
+    const delay = Math.max(0, (m.at - playCtx.currentTime) * 1000);
+    setTimeout(() => { if (ws && ws.readyState === 1) ws.send(envMark(streamSid, m.name)); }, delay);
+  }
+  $("call").onclick = startCall;
+  $("hangup").onclick = () => { if (ws && ws.readyState === 1) { ws.send(envStop(streamSid, callId)); ws.close(); } stopMic(); };
+})();
+</script>
+</body>
+</html>
