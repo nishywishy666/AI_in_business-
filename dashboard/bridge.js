@@ -13,9 +13,15 @@
     css.id = "dashboard-bridge-style";
     css.textContent =
       ".seg:not(.seg-dark){border-color:var(--color-accent);background:var(--color-accent);overflow:hidden}" +
-      ".seg:not(.seg-dark) .seg-opt{background:var(--color-accent) !important;color:#fff !important;box-shadow:none !important;transition:color .2s ease .06s}" +
+      ".seg:not(.seg-dark) .seg-opt{background:var(--color-accent) !important;color:#fff !important;" +
+      "box-shadow:none !important;transition:background .22s ease,color .2s ease}" +
       ".seg:not(.seg-dark) .seg-opt + .seg-opt{border-left-color:rgba(255,255,255,.25)}" +
-      ".seg:not(.seg-dark) .seg-opt:has(input:checked){background:var(--color-accent) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55) !important}" +
+      // the selected option is the inverse of the rest: white ground, accent label — the same swap
+      // the buttons make under the hover circle, so selection and hover read as one idea
+      ".seg:not(.seg-dark) .seg-opt:has(input:checked){background:var(--color-surface) !important;" +
+      "color:var(--color-accent) !important;box-shadow:none !important;font-weight:856 !important}" +
+      ".seg.seg-dark .seg-opt:has(input:checked){background:#fff !important;color:#0e2b27 !important;" +
+      "font-weight:856 !important}" +
       // the same rising circle the buttons use, on the options you can still pick
       ".seg:not(.seg-dark) .seg-opt{position:relative;isolation:isolate;overflow:hidden}" +
       ".seg:not(.seg-dark) .seg-opt::before{content:'';position:absolute;left:50%;bottom:0;width:165%;aspect-ratio:1;" +
@@ -64,7 +70,8 @@
       // The component itself cannot be dropped in: UI/ is a pinned export whose DOM belongs to
       // React, and GSAP is not loadable here. Every effect it ships is reproducible without either —
       // border glow and spotlight are custom properties driven from one rAF loop, tilt/magnetism are
-      // a transform, particles and the click ripple are keyframes. Glow colour is the theme accent.
+      // a transform, and the click ripple is a keyframe. Glow colour is the theme accent. The star
+      // particles the component ships were dropped: drifting dots over a KPI card read as dirt.
       ":root{--dc-glow:31,74,69}" +
       ".dc-bento{position:relative;overflow:hidden;--dc-glow-x:50%;--dc-glow-y:50%;--dc-glow-intensity:0;" +
       "--dc-glow-radius:220px;transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .3s ease}" +
@@ -79,17 +86,11 @@
       ".dc-spotlight{position:fixed;width:680px;height:680px;border-radius:50%;pointer-events:none;z-index:5;" +
       "opacity:0;transform:translate(-50%,-50%);transition:opacity .28s ease;background:radial-gradient(circle," +
       "rgba(var(--dc-glow),.10) 0%,rgba(var(--dc-glow),.05) 25%,rgba(var(--dc-glow),.02) 45%,transparent 70%)}" +
-      "@keyframes dc-particle{0%{transform:translate(0,0) scale(0);opacity:0}" +
-      "18%{transform:translate(0,0) scale(1);opacity:.85}" +
-      "100%{transform:translate(var(--dx),var(--dy)) scale(.5);opacity:0}}" +
-      ".dc-particle{position:absolute;width:4px;height:4px;border-radius:50%;pointer-events:none;z-index:3;" +
-      "background:rgba(var(--dc-glow),.8);box-shadow:0 0 6px rgba(var(--dc-glow),.45);" +
-      "animation:dc-particle var(--dur) ease-out infinite}" +
       "@keyframes dc-ripple{from{transform:scale(0);opacity:.55}to{transform:scale(1);opacity:0}}" +
       ".dc-ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:3;background:radial-gradient(circle," +
       "rgba(var(--dc-glow),.32) 0%,rgba(var(--dc-glow),.16) 30%,transparent 70%);" +
       "animation:dc-ripple .75s cubic-bezier(.22,1,.36,1) forwards}" +
-      "@media (prefers-reduced-motion:reduce){.dc-bento{transition:none}.dc-spotlight,.dc-particle{display:none}}" +
+      "@media (prefers-reduced-motion:reduce){.dc-bento{transition:none}.dc-spotlight{display:none}}" +
       // ---- typography: Outfit only, on three weights ----
       // 856 titles and numbers · 577 everything else · 267 captions and muted lines. The export
       // hard-codes 400/500/600/800 inline on its numbers and status words, and inline styles beat a
@@ -102,11 +103,17 @@
       "h1,h2,h3,h4,h5,h6{font-family:'Outfit',system-ui,sans-serif !important;font-weight:856 !important;" +
       "font-stretch:normal !important}" +
       ".card-title,.dialog-title{font-weight:856 !important}" +
-      ".card-body,.card-meta,.card-kicker,.dialog-body,small,figcaption{font-weight:267 !important}" +
-      "::placeholder{font-weight:267}" +
+      // The light tier is 360, not the 267 it started at: on a cream ground the thinner stroke
+      // disappeared at 11px. The muted colours it rides on are lifted for the same reason —
+      // neutral-400/500 are pale tans that sit near 2:1 against the background.
+      ".card-body,.card-meta,.card-kicker,.dialog-body,small,figcaption{font-weight:360 !important}" +
+      ".card-body{opacity:.92}" +
+      ".card-meta{color:color-mix(in srgb,var(--color-text) 74%,transparent)}" +
+      "::placeholder{font-weight:360;color:var(--color-neutral-600)}" +
       // muted colour is this design's marker for a caption or a secondary line
       "[style*='color: var(--color-neutral-400)'],[style*='color: var(--color-neutral-500)']," +
-      "[style*='color:var(--color-neutral-400)'],[style*='color:var(--color-neutral-500)']{font-weight:267}" +
+      "[style*='color:var(--color-neutral-400)'],[style*='color:var(--color-neutral-500)']" +
+      "{font-weight:360;color:var(--color-neutral-600) !important}" +
       ".btn,.tag,.seg-opt,th{font-weight:577 !important}" +
       // last, so a weight the design stated explicitly wins over the rules above
       "[style*='font-weight: 400'],[style*='font-weight:400']{font-weight:577 !important}" +
@@ -206,6 +213,12 @@
       var cards = document.querySelectorAll(".card.elev-sm:not(.dc-no-bento)");
       for (var c = 0; c < cards.length; c++) {
         if (cards[c].style && cards[c].style.backgroundColor) cards[c].classList.add("dc-no-bento");
+      }
+      // A card wrapping a table keeps the glow but never moves: tilting a grid of numbers you are
+      // reading across is disorienting, and the header row shears against the columns.
+      var tabled = document.querySelectorAll(".card.elev-sm:not(.dc-no-tilt)");
+      for (var t = 0; t < tabled.length; t++) {
+        if (tabled[t].querySelector("table")) tabled[t].classList.add("dc-no-tilt");
       }
       if (document.querySelector(".dc-sidebar")) return;  // found once; skip the wide scan per mutation
       var divs = document.querySelectorAll("div[style]");
@@ -307,7 +320,9 @@
     calendarOpen: false, calendarMonth: "", calendarWeekdays: [], calendarDays: [], calendarHint: "",
     calendarApplyLabel: "Apply", calendarApplyStyle: "padding:4px 13px;font-size:11px",
     calendarApply: function () {}, calendarPrev: function () {}, calendarNext: function () {},
-    trendsLoading: false, trendsLoadingLabel: "Toasting your trends"
+    trendsLoading: false, trendsLoadingLabel: "Toasting your trends",
+    aiLine: "checking the model…", aiLineTitle: "", aiDotStyle: "display:none",
+    aiLineStyle: "font-size:10px;color:var(--color-neutral-600);margin-top:2px;display:flex;align-items:center;gap:5px"
   };
 
   function api(path, opts) {
@@ -346,6 +361,12 @@
       if (self.state.notificationsOpen && bell && !bell.contains(e.target)) self.setState({ notificationsOpen: false });
       var period = document.querySelector(".dc-period");
       if (self.state.calendarOpen && period && !period.contains(e.target)) self.setState({ calendarOpen: false });
+      // the Overlord panel and the mascot that opens it share one fixed parent, so "outside" is
+      // anything not inside that — which keeps the mascot's own click a plain toggle
+      var panel = document.querySelector(".dc-overlord-panel");
+      if (self.state.overlordOpen && panel && panel.parentElement && !panel.parentElement.contains(e.target)) {
+        self.toggleOverlord();
+      }
     };
     if (typeof document !== "undefined") document.addEventListener("mousedown", this.__clickOut, true);
     this.__onResize = function () { self.__placeNavPill(); };
@@ -479,6 +500,7 @@
     vals.goProfile = function () { self.setScreen("profile"); };
     this.__headerVals(vals);
     this.__calendarVals(vals);
+    this.__aiLine(vals);
     // My saves / My likes rows open the trend they name
     vals.savedLikedTrends = (vals.savedLikedTrends || []).map(function (t) {
       return Object.assign({}, t, { onOpen: function () { self.openTrend(t.id); } });
@@ -495,6 +517,7 @@
       vals.overlordThread = this.__chatRows(vals.overlordThread);
       this.__headerVals(vals);
     this.__calendarVals(vals);
+    this.__aiLine(vals);
       return vals;
     }
     var s = this.state;
@@ -687,7 +710,7 @@
   // Every tiled card on every screen. The two big marketing panels are excluded: tilting a card you
   // are typing into is not a feature.
   var BENTO_SELECTOR = ".card.elev-sm:not(.mkt-chat):not(.dc-mkt-stats):not(.dc-no-bento)";
-  var SPOT_RADIUS = 340, PARTICLES = 8, MOBILE_BREAKPOINT = 768;
+  var SPOT_RADIUS = 340, MOBILE_BREAKPOINT = 768;
   function bentoOff() {
     return (typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT) || reducedMotion();
   }
@@ -705,7 +728,7 @@
     var onClick = function (e) { self.__bentoRipple(e); };
     document.addEventListener("mousemove", onMove, { passive: true });
     document.addEventListener("click", onClick, true);
-    this.__bento = { spot: spot, onMove: onMove, onClick: onClick, hovered: null };
+    this.__bento = { spot: spot, onMove: onMove, onClick: onClick };
   };
   // One pass per frame: proximity glow for every card, tilt and magnetism for the one under the
   // cursor, and the spotlight's own position and strength. Ported from MagicBento's GSAP tweens --
@@ -715,7 +738,7 @@
     if (!at || !bento) return;
     if (bentoOff()) { spot.style.opacity = 0; return; }
     var cards = document.querySelectorAll(BENTO_SELECTOR);
-    var proximity = SPOT_RADIUS * 0.5, fade = SPOT_RADIUS * 0.75, nearest = Infinity, hovered = null;
+    var proximity = SPOT_RADIUS * 0.5, fade = SPOT_RADIUS * 0.75, nearest = Infinity;
     var rects = [];  // measure everything before writing anything, or each write forces a layout
     for (var r = 0; r < cards.length; r++) rects.push(cards[r].getBoundingClientRect());
     for (var i = 0; i < cards.length; i++) {
@@ -734,8 +757,11 @@
       card.style.setProperty("--dc-glow-intensity", String(glow));
       card.style.setProperty("--dc-glow-radius", SPOT_RADIUS + "px");
       var inside = at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
+      if (card.classList.contains("dc-no-tilt")) {
+        if (card.style.transform) card.style.transform = "";  // in case it was tagged mid-hover
+        continue;  // glow and ripple still apply; tilt and magnetism do not
+      }
       if (inside) {
-        hovered = card;
         var dx = at.x - cx, dy = at.y - cy;
         card.style.transform = "perspective(900px) rotateX(" + (-(dy / (rect.height / 2)) * 5).toFixed(2)
           + "deg) rotateY(" + ((dx / (rect.width / 2)) * 5).toFixed(2) + "deg) translate3d("
@@ -744,33 +770,10 @@
         card.style.transform = "";
       }
     }
-    if (hovered !== bento.hovered) {
-      this.__bentoParticles(bento.hovered, false, null);
-      this.__bentoParticles(hovered, true, hovered ? rects[[].indexOf.call(cards, hovered)] : null);
-      bento.hovered = hovered;
-    }
     var strength = nearest <= proximity ? 1 : nearest <= fade ? (fade - nearest) / (fade - proximity) : 0;
     spot.style.left = at.x + "px";
     spot.style.top = at.y + "px";
     spot.style.opacity = String(strength);
-  };
-  P.__bentoParticles = function (card, on, rect) {
-    if (!card) return;
-    var old = card.querySelectorAll(".dc-particle");
-    for (var i = 0; i < old.length; i++) old[i].remove();
-    if (!on || bentoOff()) return;
-    rect = rect || card.getBoundingClientRect();
-    for (var n = 0; n < PARTICLES; n++) {
-      var dot = document.createElement("div");
-      dot.className = "dc-particle";
-      dot.style.left = (Math.random() * rect.width) + "px";
-      dot.style.top = (Math.random() * rect.height) + "px";
-      dot.style.setProperty("--dx", ((Math.random() - 0.5) * 70).toFixed(0) + "px");
-      dot.style.setProperty("--dy", ((Math.random() - 0.5) * 70).toFixed(0) + "px");
-      dot.style.setProperty("--dur", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
-      dot.style.animationDelay = (n * 0.09).toFixed(2) + "s";
-      card.appendChild(dot);
-    }
   };
   P.__bentoRipple = function (e) {
     if (bentoOff() || !e.target || !e.target.closest) return;
@@ -836,6 +839,34 @@
     document.addEventListener("click", onClick, true);
     window.addEventListener("resize", size);
     this.__sparks = { canvas: canvas, onClick: onClick, size: size };
+  };
+
+  // The small line above each chat: which free model is answering and what is left. Both chats are
+  // Gemini free tier — the marketing agent through the ladder in marketing_radar, the Overlord
+  // through its own transport — so one line serves both.
+  P.__aiLine = function (vals) {
+    var live = this.__live, ai = (live && live.data && live.data.ai) || null;
+    var tone = "background:#3a7a4a";  // a model is answering
+    var text, hint = "";
+    if (!ai) {
+      text = "checking the model…";
+      tone = "background:var(--color-neutral-400)";
+    } else if (ai.paused) {
+      text = "all free models busy" + (ai.resetsIn ? " · back " + ai.resetsIn : "");
+      tone = "background:var(--color-accent-500)";
+      hint = "Every rung of the free ladder is rate-limited or out of quota.";
+    } else {
+      var bits = [ai.model || "free tier"];
+      if (typeof ai.usedToday === "number" && ai.capToday) bits.push(ai.usedToday + "/" + ai.capToday + " today");
+      if (typeof ai.credits === "number") bits.push(ai.credits + " scan credits");
+      text = bits.join(" · ");
+      hint = (ai.qualityWarning || "") + (ai.modelId ? (ai.qualityWarning ? " " : "") + "Model: " + ai.modelId : "");
+    }
+    vals.aiLine = text;
+    vals.aiLineTitle = hint;
+    vals.aiDotStyle = "width:6px;height:6px;border-radius:50%;flex:none;" + tone;
+    vals.aiLineStyle = "font-size:10px;color:var(--color-neutral-600);margin-top:2px;display:flex;"
+      + "align-items:center;gap:5px;letter-spacing:.02em";
   };
 
   // ---- header: search over the app's own screens, and the bell ----

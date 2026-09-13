@@ -69,10 +69,30 @@ PATCHES: list[tuple[str, str]] = [
      '                <div style="font-size:11px;color:var(--color-neutral-500);line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ marketingStatsNote }}</div>\n'
      '              </sc-if>\n'
      '            </div>\n'
-     '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column">'),
+     '            <div class="dc-chat-row" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap">\n'
+     '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column;flex:1 1 260px;min-width:0">'),
     # Marketing: a toastie orbiting a ring while the scan loads, in place of an empty column.
     ('<sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">',
      '<sc-if value="{{ trendsLoading }}">\n              <div class="dc-toastie-loader" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:52px 0">\n                <div class="dc-toastie-orbit">\n                  <div class="dc-toastie-track"></div>\n                  <div class="dc-toastie-arm"><svg class="dc-toastie" viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><g class="dc-toastie-steam" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" opacity=".55"><path d="M15 9c-1.6-1.8 1.6-3.2 0-5"/><path d="M22 8.5c-1.6-1.8 1.6-3.2 0-5"/></g><path d="M6.5 26.5 19 13.5l14.5 5.5-12.5 13z" fill="var(--color-accent-300)" stroke="var(--color-accent-700)" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 13.5 33.5 19l-3 3.2L15.8 17z" fill="var(--color-accent-200)" stroke="var(--color-accent-700)" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.5 24.5c2.6 1.4 5 1.1 7.2-.6 2.3 2 4.7 2.2 7.2.5" fill="none" stroke="var(--color-accent-600)" stroke-width="1.7" stroke-linecap="round"/></svg></div>\n                </div>\n                <div style="font-size:12px;color:var(--color-neutral-500)">{{ trendsLoadingLabel }}<span class="dc-dots"></span></div>\n              </div>\n            </sc-if>\n            <sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">'),
+    # My saves / My likes move out from under the chat to a column beside it, centred against
+    # its height. The wrapper opened above closes after them.
+    ('<div style="display:flex;gap:24px;justify-content:center;padding:16px 0">',
+     '<div style="display:flex;flex-direction:column;gap:22px;justify-content:center;padding:6px 2px;flex:none">'),
+    ('<div style="font-size:11px;color:var(--color-neutral-500)">{{ likedCount }} liked</div>\n'
+     '              </div>\n'
+     '            </div>',
+     '<div style="font-size:11px;color:var(--color-neutral-500)">{{ likedCount }} liked</div>\n'
+     '              </div>\n'
+     '            </div>\n'
+     '            </div>'),
+    # Both chats say what is answering them and what is left: the free model in use, how much of
+    # its daily allowance is gone, and the scan credits behind the trend data.
+    ('<div class="card-title" style="font-size:15px">Marketing agent</div>',
+     '<div class="card-title" style="font-size:15px">Marketing agent</div>\n'
+     '              <div class="dc-ai-line" style="{{ aiLineStyle }}" title="{{ aiLineTitle }}"><span style="{{ aiDotStyle }}"></span>{{ aiLine }}</div>'),
+    ('<div style="font-size:11px;color:var(--color-neutral-500)">Ask about calls, bookings, trends</div>',
+     '<div style="font-size:11px;color:var(--color-neutral-500)">Ask about calls, bookings, trends</div>\n'
+     '            <div class="dc-ai-line" style="{{ aiLineStyle }}" title="{{ aiLineTitle }}"><span style="{{ aiDotStyle }}"></span>{{ aiLine }}</div>'),
     # Analytics: Custom opens a calendar. The seg row becomes the popover's anchor; the grid and
     # its selection are built in the bridge, which then asks for period=custom with real dates.
     ('<div style="display:flex;align-items:center;gap:10px">\n            <div class="seg" style="font-size:12px">\n              <sc-for list="{{ periodOptions }}" as="po" hint-placeholder-count="3">\n                <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ po.active }}" onChange="{{ po.onSelect }}">{{ po.label }}</label>\n              </sc-for>\n            </div>\n          </div>',
@@ -127,7 +147,9 @@ PATCHES: list[tuple[str, str]] = [
      '        </div>'),
     # Collapsed sidebar: the mascot is the only branding left at 64px wide, so give it room.
     ('<img src="assets/uncle-tony-mascot.svg" style="height:36px;width:auto;flex:none">',
-     '<img src="assets/uncle-tony-mascot.svg" style="height:52px;width:auto;flex:none;margin:0 auto;display:block">'),
+     # align-self is the fix for the stretch: the wrapper is a column flex container, so a child
+     # with width:auto gets stretched to its full width while height stays pinned.
+     '<img src="assets/uncle-tony-mascot.svg" style="height:52px;width:auto;flex:none;align-self:center">'),
     # Chat bubbles (both agents) gain a mascot and an animated ellipsis, used only while a turn is
     # still in flight — see the thinking states in bridge.js. Per-row bindings, so the bridge decides
     # which rows show them.
@@ -233,8 +255,15 @@ def render_page(template: str | None = None, bridge: str | None = None) -> str:
 
 
 @lru_cache(maxsize=1)
-def cached_page() -> str:
+def _rendered(stamp: tuple[int, int]) -> str:
     return render_page()
+
+
+def cached_page() -> str:
+    """Rendered once and held, but keyed on both source files' mtimes: `uvicorn --reload` only
+    watches `*.py`, so without this an edit to bridge.js needs a server restart to show up — and
+    looks for all the world like the change did not work."""
+    return _rendered((PAGE.stat().st_mtime_ns, BRIDGE.stat().st_mtime_ns))
 
 
 def mount_ui(app: FastAPI, *, cache: bool = True) -> None:

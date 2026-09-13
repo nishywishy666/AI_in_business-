@@ -108,8 +108,10 @@ the bridge's stylesheet plus one controller — and in the theme's own green (`-
 | border glow | a masked radial-gradient `::after` ring, driven by `--dc-glow-x/y/intensity` |
 | global spotlight | one fixed element following the cursor, faded by distance to the nearest card |
 | tilt + magnetism | a single `perspective/rotateX/rotateY/translate3d` transform, CSS handles the easing |
-| star particles | 8 dots per hovered card, CSS keyframes rather than per-particle GSAP timelines |
 | click ripple | one appended element on a keyframe, removed on `animationend` |
+
+The star particles were built and then removed at the owner's call: drifting dots over a KPI card
+read as dirt on the screen rather than sparkle.
 
 One rAF-throttled `mousemove` drives all of it, and it measures every card's rect **before** writing
 any of them — interleaving reads and writes forces a layout per card per frame. `textAutoHide` was
@@ -150,3 +152,18 @@ curls.
 Three cycles run at once: the arm rotates, the toastie counter-rotates by exactly the same period so
 it stays upright as it travels, and a shorter wobble plus drifting steam ride on top. Under
 `prefers-reduced-motion` only the ring turns, and slower.
+
+## Both chats say what is answering them
+A small line under each chat's title: the free model in use, how much of its daily allowance is
+gone, and the ScrapeCreators credits behind the trend data — with a status dot (green answering,
+amber every rung busy, grey still checking) and the model id plus any quality warning on hover.
+
+Both chats are Gemini free tier, so one line serves both: the marketing agent goes through
+`marketing_radar`'s ladder, and the Overlord through its own transport with its own resolved model.
+`MarketingHub.ai_status()` reads the usage snapshot and is deliberately best effort — it returns the
+empty shape rather than raising, because a chat that still works must not be blocked by the line that
+describes it. It rides on the bootstrap, with `GET /api/dashboard/ai` for a direct read.
+
+Clicking anywhere outside the Overlord closes it, through the same animated path as the profile menu:
+the panel and the mascot that opens it share one fixed parent, so "outside" is anything not inside
+that parent — which keeps the mascot's own click a plain toggle rather than a close-then-reopen race.

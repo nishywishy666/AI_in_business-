@@ -124,6 +124,15 @@ def test_marketing_flow_through_the_dashboard(client):
     assert boot["overview"]["quickActions"][2]["label"] == "Top trend this week"
 
 
+def test_bootstrap_says_which_free_model_is_answering(client):
+    """The line above both chats. Offline it still names the tier and never raises — a chat that
+    works while this is unavailable must not be blocked by it."""
+    ai = client.get("/api/dashboard/bootstrap").json()["ai"]
+    assert ai["provider"] == "Gemini free tier" and ai["paused"] in (True, False)
+    assert set(ai) >= {"model", "modelId", "usedToday", "capToday", "credits", "resetsIn", "offline"}
+    assert client.get("/api/dashboard/ai").json()["provider"] == ai["provider"]
+
+
 def test_bootstrap_carries_notifications_that_name_a_screen(client):
     """The header bell is built from the same payload the page already has: every row is something
     waiting on Tony and says which screen it lives on, so clicking one can navigate."""
