@@ -10,10 +10,12 @@ from ..packets import ScanBrief, TrendPacket
 
 
 def get_brief(store: RadarStore, cache: LocalCache, settings: Settings, *, scan_id: str | None = None,
-              clock: Clock = utc_now) -> dict | None:
+              clock: Clock = utc_now, force: bool = False) -> dict | None:
+    """`force=True` skips the once-a-day local cache and re-reads Firestore — what the dashboard's
+    "Refresh now" button calls. Still a read: no scrape, no credit is ever spent."""
     if scan_id is None:
         try:
-            bundle = daily_pull(store, cache, settings, clock)
+            bundle = daily_pull(store, cache, settings, clock, force=force)
         except ContextMissing:
             return None
         return bundle.brief.to_doc() if bundle.brief else None

@@ -45,6 +45,9 @@ def test_bootstrap_matches_the_template_contract(client):
     assert k["kpiCalls"] == "10" and k["kpiBookings"] == "3" and k["kpiCovers"] == "12"
     assert k["kpiContainment"] == "60%" and k["kpiContainmentMeta"] == "6 of 10 calls, no callback requested"
     assert d["overview"]["chart"]["labels"][-1] == "Today" and sum(d["overview"]["chart"]["values"]) == len(d["calls"]) == 26
+    # the 7D/30D toggle reads both series out of one bootstrap; 30d covers at least what 7d does
+    assert d["overview"]["chart30"]["days"] == 30 and len(d["overview"]["chart30"]["values"]) == 30
+    assert sum(d["overview"]["chart30"]["values"]) >= sum(d["overview"]["chart"]["values"])
     assert {r["label"]: r["count"] for r in d["overview"]["routeMix"]["legend"]} == {"Booking": 3, "Question": 5, "Callback": 1, "Chitchat": 1}
     outcomes = [c["outcome"] for c in d["calls"] if c["startedAt"] >= d["period"]["start"]]
     assert outcomes.count("Booked") == 3 and outcomes.count("Couldn't answer") == 3 and outcomes.count("Callback logged") == 1
@@ -119,6 +122,16 @@ def test_marketing_flow_through_the_dashboard(client):
     assert client.get("/api/marketing/stats").json()["scrapecreators"]["remaining"] <= 97  # scan + like transcript credit
     boot = client.get("/api/dashboard/bootstrap").json()
     assert boot["overview"]["quickActions"][2]["label"] == "Top trend this week"
+
+
+def test_refresh_trends_rereads_the_brief_now(client):
+    """The "Refresh now" button: never 500s on an empty state, and picks up a brief that landed after
+    the once-a-day local cache was written — the case where the UI would otherwise show nothing."""
+    empty = client.post("/api/dashboard/trends/refresh")
+    assert empty.status_code == 200 and empty.json()["empty"] is True and empty.json()["note"]
+    assert client.post("/api/jobs/marketing-scan").status_code == 200
+    fresh = client.post("/api/dashboard/trends/refresh").json()
+    assert not fresh["empty"] and fresh["items"] and fresh["scanId"]
 
 
 def test_overlord_answers_from_the_records_without_a_model(client):

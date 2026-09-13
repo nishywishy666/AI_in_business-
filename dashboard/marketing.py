@@ -50,6 +50,7 @@ class MarketingHub:
         self.dash = dash
         self._settings = settings
         self._deps = deps
+        self._injected = (settings, deps)  # what reset() restores, so an injected double survives it
         self._lock = threading.Lock()
         self.error: str | None = None
 
@@ -97,11 +98,19 @@ class MarketingHub:
     def api(self) -> RadarApi:
         return RadarApi(self.deps())
 
+    def reset(self) -> None:
+        """Drop the memoised settings/deps so the next read rebuilds them. A failed build (bad keys,
+        Firestore unreachable) is otherwise cached for the life of the process — "Refresh now" is the
+        user's way out of that."""
+        with self._lock:
+            self._settings, self._deps = self._injected
+            self.error = None
+
     # ---- read side -----------------------------------------------------------------------------------
-    def brief(self) -> dict | None:
+    def brief(self, *, force: bool = False) -> dict | None:
         deps = self.deps()
         try:
-            return get_brief(deps.store, deps.cache, deps.settings, clock=deps.clock)
+            return get_brief(deps.store, deps.cache, deps.settings, clock=deps.clock, force=force)
         except Exception as exc:
             self.error = str(exc)[:200]
             log.warning("brief unavailable: %s", exc)
@@ -115,11 +124,18 @@ class MarketingHub:
             log.warning("marketing summary unavailable: %s", exc)
             return None
 
-    def trends(self) -> dict[str, Any]:
+    def trends(self, *, force: bool = False) -> dict[str, Any]:
         """UI-shaped cards. `score` is rank-normalised inside each list (top card = 99) because the
-        AIOS `final` is a relative velocity, not a percentage."""
-        brief = self.brief()
-        deps = self.deps()
+        AIOS `final` is a relative velocity, not a percentage. `force=True` (the "Refresh now" button)
+        re-reads Firestore instead of the once-a-day local cache."""
+        if force:
+            self.reset()
+        try:
+            brief, deps = self.brief(force=force), self.deps()
+        except Exception as exc:  # deps could not be built at all: report it, don't 500 the dashboard
+            self.error = str(exc)[:200]
+            log.warning("marketing deps unavailable: %s", exc)
+            brief, deps = None, None
         if brief is None:
             return {"items": [], "likedIds": [], "savedIds": [], "savedCount": 0, "scanId": None, "empty": True,
                     "note": self.error or "No scan yet — the first trend scan is scheduled.", "greeting": EMPTY_GREETING}
