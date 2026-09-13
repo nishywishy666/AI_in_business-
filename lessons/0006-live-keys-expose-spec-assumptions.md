@@ -19,3 +19,6 @@ Every suite runs on fakes, so model ids, enabled Google APIs and credential enco
 
 ## How to avoid next time
 Before any deploy, run a live smoke check per key: list Groq models and confirm the configured id, read one Calendar event, read one Firestore doc with the exact env value the host will get.
+
+## Addendum — empty `FIRESTORE_EMULATOR_HOST=` breaks every Firestore call
+`scripts/seed_business.py` failed with `Failed to create channel to '': the target uri is not valid`. The `.env` template carries `FIRESTORE_EMULATOR_HOST=` with no value; `load_dotenv` exports it as an empty string and the google client treats any set value as "use the emulator". Keep that line commented out in `.env`, and never add the variable (even empty) to Railway.
