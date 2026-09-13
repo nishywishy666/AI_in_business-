@@ -52,6 +52,54 @@ PATCHES: list[tuple[str, str]] = [
      '              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>\n'
      '              <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="Re-read the latest trend scan now">{{ refreshTrendsLabel }}</button>\n'
      '            </div>'),
+    # Chat bubbles (both agents) gain a mascot and an animated ellipsis, used only while a turn is
+    # still in flight — see the thinking states in bridge.js. Per-row bindings, so the bridge decides
+    # which rows show them.
+    ('<sc-for list="{{ marketingChat }}" as="m" hint-placeholder-count="2">\n'
+     '                  <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>\n'
+     '                </sc-for>',
+     '<sc-for list="{{ marketingChat }}" as="m" hint-placeholder-count="2">\n'
+     '                  <div class="dc-chat-row" style="{{ m.rowStyle }}">\n'
+     '                    <img class="dc-chat-mascot" src="assets/uncle-tony-mascot.svg" alt="" style="{{ m.mascotStyle }}">\n'
+     '                    <div style="{{ m.bubbleStyle }}">{{ m.text }}<span class="dc-dots" style="{{ m.dotsStyle }}"></span></div>\n'
+     '                  </div>\n'
+     '                </sc-for>'),
+    ('<sc-for list="{{ overlordThread }}" as="m" hint-placeholder-count="2">\n'
+     '            <div style="{{ m.bubbleStyle }}">{{ m.text }}</div>\n'
+     '          </sc-for>',
+     '<sc-for list="{{ overlordThread }}" as="m" hint-placeholder-count="2">\n'
+     '            <div class="dc-chat-row" style="{{ m.rowStyle }}">\n'
+     '              <img class="dc-chat-mascot" src="assets/uncle-tony-mascot.svg" alt="" style="{{ m.mascotStyle }}">\n'
+     '              <div style="{{ m.bubbleStyle }}">{{ m.text }}<span class="dc-dots" style="{{ m.dotsStyle }}"></span></div>\n'
+     '            </div>\n'
+     '          </sc-for>'),
+    # Profile: drop the Edit button — there is no edit flow behind it — and the Notifications card,
+    # whose toggles persist a preference nothing acts on yet.
+    ('<button class="btn btn-secondary">Edit</button>\n', ''),
+    ('\n            <div class="card elev-sm">\n'
+     '              <div class="card-title">Notifications</div>\n'
+     '              <p class="card-body">Choose what Uncle Tony gets pinged about.</p>\n'
+     '              <sc-for list="{{ notifRows }}" as="nr" hint-placeholder-count="3">\n'
+     '                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--color-divider)">\n'
+     '                  <div style="min-width:0">\n'
+     '                    <div style="font-size:13px">{{ nr.label }}</div>\n'
+     '                    <div style="font-size:11px;color:var(--color-neutral-500)">{{ nr.sub }}</div>\n'
+     '                  </div>\n'
+     '                  <div onClick="{{ nr.onToggle }}" style="{{ nr.trackStyle }}"><div style="{{ nr.knobStyle }}"></div></div>\n'
+     '                </div>\n'
+     '              </sc-for>\n'
+     '            </div>\n', '\n'),
+    # Business Context is only reachable from Profile, so give it the way back.
+    ('<sc-if value="{{ isSetup }}">\n',
+     '<sc-if value="{{ isSetup }}">\n'
+     '        <div style="margin-bottom:14px">\n'
+     '          <button class="btn btn-secondary" onClick="{{ goProfile }}">← Back to profile</button>\n'
+     '        </div>\n'),
+    # My saves / My likes: the rows were inert. Clicking one opens that trend's script card.
+    ('<sc-for list="{{ savedLikedTrends }}" as="sl" hint-placeholder-count="2">\n'
+     '                      <div class="card elev-sm">',
+     '<sc-for list="{{ savedLikedTrends }}" as="sl" hint-placeholder-count="2">\n'
+     '                      <div class="card elev-sm" style="cursor:pointer" onClick="{{ sl.onOpen }}" title="Open this trend">'),
     # Sidebar: the caret next to the business name becomes a profile glyph — it opens a profile menu,
     # so it should read as "you", not as "sort". Same 16-box stroke icons the platform filters use.
     ('<span style="color:var(--color-neutral-400);font-size:10px;flex:none">{{ profileChevron }}</span>',

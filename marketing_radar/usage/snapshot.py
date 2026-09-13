@@ -50,7 +50,7 @@ def build_snapshot(store: RadarStore, settings: Settings, clock: Clock, *,
 
     daily_doc = store.get(store.paths.gemini_daily(today))
     daily = GeminiDaily.model_validate(daily_doc) if daily_doc else GeminiDaily(pacific_date=today)
-    statuses = rung_statuses_from_daily(settings, daily)
+    statuses = rung_statuses_from_daily(settings, daily, now=now)  # `now` so a cooling model reads as spent
     models = [GeminiModelUsage(id=s.model_id, label=s.rung.label, quality=s.rung.quality, used_today=s.used,
                                daily_cap=s.rung.daily_cap, remaining=s.remaining, status=s.status) for s in statuses]
     active_index = next((i for i, s in enumerate(statuses) if s.status == "ok"), None)

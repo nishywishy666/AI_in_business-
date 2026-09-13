@@ -90,6 +90,24 @@ def test_gemini_exhausted_gives_reset_time(scanned):
     assert reply.model_used is None
 
 
+def test_a_minute_long_cooldown_holds_the_turn_open_instead_of_answering(scanned):
+    """Every free model rate-limited for the minute is not an answer — the UI keeps the mascot
+    thinking and asks again, so the holding text is never written into the thread and the retry is
+    the same turn rather than a second question."""
+    deps, _, brief = scanned
+    models = ["gemini-3.8-flash", "gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.0-flash-lite"]
+    deps.gemini.transport = FakeGeminiTransport(
+        scripts={m: [RateLimited("429 perminute", daily=False, retry_after=30)] for m in models})
+    chat = ChatSession(deps, "t9")
+    reply = chat.send("what's working?")
+    assert reply.retry_after and 5 <= reply.retry_after <= 900
+    assert "midnight Pacific" not in reply.text and reply.model_used is None
+    assert [m["role"] for m in chat.history()] == ["user"]
+
+    chat.send("what's working?", retry=True)
+    assert [m["role"] for m in chat.history()] == ["user"], "a retry is the same turn, not a new one"
+
+
 def test_chat_without_context_explains(store, settings, clock):
     deps, _ = make_scan_deps(store, settings, clock)
     reply = ChatSession(deps).send("hello")

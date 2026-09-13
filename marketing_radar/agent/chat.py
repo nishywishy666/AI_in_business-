@@ -30,6 +30,9 @@ class ChatReply:
     model_used: str | None = None
     quality_warning: str | None = None
     scan_id: str | None = None
+    # seconds until a free model is worth trying again. Set only when every rung is briefly cooling
+    # off, so the caller can hold the question open instead of turning it into a dead-end answer.
+    retry_after: float | None = None
 
 
 class ChatSession:
@@ -39,9 +42,10 @@ class ChatSession:
         self.history_limit = history_limit
 
     # ---- public --------------------------------------------------------------------
-    def send(self, message: str, *, attached_post_id: str | None = None) -> ChatReply:
+    def send(self, message: str, *, attached_post_id: str | None = None, retry: bool = False) -> ChatReply:
         deps = self.deps
-        self._persist("user", message, post_id=attached_post_id)
+        if not retry:  # an automatic retry of a cooled-off question is the same turn, not a new one
+            self._persist("user", message, post_id=attached_post_id)
         try:
             bundle = daily_pull(deps.store, deps.cache, deps.settings, deps.clock)
         except ContextMissing:
@@ -73,9 +77,17 @@ class ChatSession:
                 reply = parsed.get("reply") or ""
                 break
         except GeminiExhausted as exc:
+            have = f"{' (' + brief.scan_id + ')' if brief else ''} and ranked posts are still available."
+            wait = (exc.resets_at - deps.clock()).total_seconds()
+            if wait <= 900:
+                # Every free rung is cooling off from a per-minute rate limit, not out of quota. The
+                # question stays open — `retry_after` tells the caller when to ask it again — so this
+                # text is only the fallback for a caller that ignores it, and is not persisted.
+                return ChatReply(text=f"Still thinking — every free model is busy this minute. Your latest brief{have}",
+                                 thread_id=self.thread_id, actions=[], scan_id=brief.scan_id if brief else None,
+                                 retry_after=max(5.0, min(wait, 900.0)))
             reply = (f"The AI assistant is paused until {iso(exc.resets_at)} (midnight Pacific) because today's "
-                     f"free Gemini quota is used up. Your latest brief"
-                     f"{' (' + brief.scan_id + ')' if brief else ''} and ranked posts are still available.")
+                     f"free Gemini quota is used up. Your latest brief{have}")
         if not reply:
             reply = "I could not produce an answer from the current brief. Try rephrasing, or ask what to film next."
         refresh_snapshot(deps.store, deps.settings, deps.clock, cache=deps.cache)
