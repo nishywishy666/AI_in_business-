@@ -332,6 +332,37 @@ def freshness(analytics: dict, *, now: dt.datetime, settings: DashboardSettings)
             "staleAfterMinutes": settings.stale_after_minutes, "stale": analytics["freshness"]["stale"]}
 
 
+def notifications(*, analytics_out: dict, trends: dict, open_callbacks: list, now: dt.datetime) -> list[dict]:
+    """What the header bell shows: the things on this dashboard that are actually waiting on Tony,
+    newest concern first. Built from the payloads the bootstrap already computed — no extra reads —
+    and every row names the screen it belongs to so the bell can navigate there."""
+    rows: list[dict] = []
+    if open_callbacks:
+        count = len(open_callbacks)
+        rows.append({"id": "callbacks", "tone": "urgent", "screen": "callbacks",
+                     "title": f"{count} callback{'s' if count != 1 else ''} waiting",
+                     "sub": f"Longest wait {analytics_out['oldestCallbackWait']}"})
+    unreviewed = [g for g in analytics_out["gaps"] if not g["review"]]
+    if unreviewed:
+        rows.append({"id": "gaps", "tone": "warn", "screen": "callbacks",
+                     "title": f"{len(unreviewed)} question{'s' if len(unreviewed) != 1 else ''} to review",
+                     "sub": unreviewed[0]["text"]})
+    if not trends["empty"] and trends.get("items"):
+        rows.append({"id": "scan", "tone": "info", "screen": "marketing",
+                     "title": f"Trend scan {trends['scanId']} is in",
+                     "sub": f"Top of the list: {trends['items'][0]['title']}"})
+    if trends.get("platformsNote"):
+        rows.append({"id": "platforms", "tone": "warn", "screen": "marketing",
+                     "title": "Some platforms sat out this scan", "sub": trends["platformsNote"]})
+    if analytics_out["freshness"]["stale"]:
+        rows.append({"id": "stale", "tone": "warn", "screen": "overview", "title": "Call data is stale",
+                     "sub": f"Last refreshed {analytics_out['freshness']['asOf']}"})
+    if not rows:
+        rows.append({"id": "clear", "tone": "ok", "screen": "overview", "title": "All caught up",
+                     "sub": "No callbacks waiting and nothing flagged for review."})
+    return rows
+
+
 def analytics_payload(analytics: dict, settings: DashboardSettings, *, now: dt.datetime) -> dict:
     """Everything the Analytics + Overview tiles need for one period."""
     return {

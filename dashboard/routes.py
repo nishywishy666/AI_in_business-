@@ -50,10 +50,12 @@ class DashboardContext:
     cron_secret: str | None = field(default_factory=lambda: os.environ.get("CRON_SECRET") or None)
 
     # ---- composed reads ------------------------------------------------------------------------
-    def analytics(self, period: str, *, now: dt.datetime | None = None, snapshot=None) -> dict:
+    def analytics(self, period: str, *, now: dt.datetime | None = None, snapshot=None,
+                  start_date: dt.date | None = None, end_date: dt.date | None = None) -> dict:
         now = now or self.clock()
         snapshot = snapshot or self.source.load()
-        raw = an.compute(snapshot, self.settings, period_key=period, now=now)
+        raw = an.compute(snapshot, self.settings, period_key=period, now=now,
+                         start_date=start_date, end_date=end_date)
         return present.analytics_payload(raw, self.settings, now=now)
 
     def bootstrap(self, period: str) -> dict:
@@ -79,6 +81,9 @@ class DashboardContext:
             {"icon": "▲", "label": "Top trend this week" if not trends["empty"] else "No trend scan yet",
              "sub": trends["items"][0]["title"] if trends["items"] else trends.get("note") or "", "tag": "Marketing", "screen": "marketing"},
         ]
+        analytics_out = present.analytics_payload(raw, self.settings, now=now)
+        notifications = present.notifications(analytics_out=analytics_out, trends=trends,
+                                              open_callbacks=open_callbacks, now=now)
         month_minutes = raw["minutes"]["month_to_date"]
         included = self.settings.included_minutes_per_month
         return {
@@ -86,7 +91,8 @@ class DashboardContext:
             "business": {"id": self.business_id, "name": setup["businessName"], "timezone": self.settings.business_timezone,
                          "source": snapshot.source, "demo": snapshot.has_demo_calls},
             "period": raw["period"],
-            "analytics": present.analytics_payload(raw, self.settings, now=now),
+            "analytics": analytics_out,
+            "notifications": notifications,
             "overview": {"kpis": present.kpis(raw_today), "chart": chart, "chart30": chart30, "routeMix": present.route_mix(raw_today),
                          "quickActions": quick_actions,
                          "callLogCountLabel": f"calls on record · {self.settings.business_timezone}"},
@@ -112,8 +118,11 @@ def build_router(ctx: DashboardContext) -> APIRouter:
         return JSONResponse(ctx.bootstrap(_period(period)))
 
     @router.get("/api/dashboard/analytics")
-    def analytics(period: str = Query("today")) -> JSONResponse:
-        return JSONResponse(ctx.analytics(_period(period)))
+    def analytics(period: str = Query("today"), start: str | None = Query(None),
+                  end: str | None = Query(None)) -> JSONResponse:
+        """`period=custom&start=YYYY-MM-DD&end=YYYY-MM-DD` is the Analytics calendar picker; without
+        dates, custom falls back to the last 30 days as it always did."""
+        return JSONResponse(ctx.analytics(_period(period), start_date=_date(start), end_date=_date(end)))
 
     @router.get("/api/dashboard/calls")
     def calls(period: str | None = Query(None)) -> JSONResponse:
@@ -232,6 +241,15 @@ def run_job(ctx: DashboardContext, name: str) -> dict:
         synced = ctx.calendar_retry(now) if ctx.calendar_retry else 0
         return {"job": name, "ran_at": now.isoformat(), "synced": synced}
     raise HTTPException(404, name)
+
+
+def _date(value: str | None) -> dt.date | None:
+    if not value:
+        return None
+    try:
+        return dt.date.fromisoformat(value.strip())
+    except ValueError:
+        raise HTTPException(400, f"bad date {value!r}; expected YYYY-MM-DD")
 
 
 def _period(value: str) -> str:

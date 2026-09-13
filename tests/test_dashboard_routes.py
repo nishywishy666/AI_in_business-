@@ -124,6 +124,15 @@ def test_marketing_flow_through_the_dashboard(client):
     assert boot["overview"]["quickActions"][2]["label"] == "Top trend this week"
 
 
+def test_bootstrap_carries_notifications_that_name_a_screen(client):
+    """The header bell is built from the same payload the page already has: every row is something
+    waiting on Tony and says which screen it lives on, so clicking one can navigate."""
+    notes = client.get("/api/dashboard/bootstrap").json()["notifications"]
+    assert notes and all({"id", "tone", "screen", "title", "sub"} <= set(n) for n in notes)
+    assert all(n["screen"] in {"overview", "calls", "marketing", "callbacks", "analytics"} for n in notes)
+    assert {n["id"] for n in notes} & {"callbacks", "gaps", "clear"}
+
+
 def test_save_sticks_even_when_every_free_model_is_paused(tmp_path):
     """A save is a bookmark, not an AI call. With the free Gemini ladder spent, the script cannot be
     written — but the save itself must still stick, or the UI rolls it back and the trend the owner

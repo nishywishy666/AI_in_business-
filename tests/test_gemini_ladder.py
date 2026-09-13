@@ -101,6 +101,20 @@ def test_every_rung_cooling_reports_the_short_wait_not_midnight(store, settings,
     assert exc.value.resets_at < MIDNIGHT_PT and exc.value.resets_at > clock()
 
 
+def test_a_model_retired_with_no_recorded_wait_is_probed_again(store, settings, clock):
+    """Docs written by the build that retired a model for the whole Pacific day carry no cooldown.
+    Inheriting that means a ladder that is dead until midnight with nothing to unstick it, so each
+    such model gets one probe — which is what un-pauses an agent that is already in that state."""
+    from marketing_radar.clock import pacific_date
+    from marketing_radar.packets import GeminiDaily
+
+    stale = GeminiDaily(pacific_date=pacific_date(clock()), exhausted=["gemini-3.8-flash", "gemini-2.5-flash"])
+    store.set(store.paths.gemini_daily(stale.pacific_date), stale.to_doc())
+
+    ladder = _ladder(store, settings, clock, FakeGeminiTransport(default='{"ok": true}'))
+    assert ladder.generate("chat", system="s", prompt="p").model_used == "gemini-3.8-flash"
+
+
 def test_min_rung_forces_a_lower_rung(store, settings, clock):
     transport = FakeGeminiTransport()
     result = _ladder(store, settings, clock, transport).generate("synthesize", system="s", prompt="p", min_rung=2)

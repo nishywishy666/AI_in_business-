@@ -13,10 +13,16 @@
     css.id = "dashboard-bridge-style";
     css.textContent =
       ".seg:not(.seg-dark){border-color:var(--color-accent);background:var(--color-accent);overflow:hidden}" +
-      ".seg:not(.seg-dark) .seg-opt{background:var(--color-accent) !important;color:#fff !important;box-shadow:none !important;transition:background .18s ease}" +
+      ".seg:not(.seg-dark) .seg-opt{background:var(--color-accent) !important;color:#fff !important;box-shadow:none !important;transition:color .2s ease .06s}" +
       ".seg:not(.seg-dark) .seg-opt + .seg-opt{border-left-color:rgba(255,255,255,.25)}" +
       ".seg:not(.seg-dark) .seg-opt:has(input:checked){background:var(--color-accent) !important;color:#fff !important;box-shadow:inset 0 0 0 1px rgba(255,255,255,.55) !important}" +
-      ".seg:not(.seg-dark) .seg-opt:not(:has(input:checked)):hover{background:color-mix(in srgb,#fff 12%,var(--color-accent)) !important}" +
+      // the same rising circle the buttons use, on the options you can still pick
+      ".seg:not(.seg-dark) .seg-opt{position:relative;isolation:isolate;overflow:hidden}" +
+      ".seg:not(.seg-dark) .seg-opt::before{content:'';position:absolute;left:50%;bottom:0;width:165%;aspect-ratio:1;" +
+      "border-radius:50%;background:var(--color-surface);transform:translate(-50%,50%) scale(0);pointer-events:none;" +
+      "z-index:-1;transition:transform .42s cubic-bezier(.22,1,.36,1)}" +
+      ".seg:not(.seg-dark) .seg-opt:not(:has(input:checked)):hover::before{transform:translate(-50%,50%) scale(1)}" +
+      ".seg:not(.seg-dark) .seg-opt:not(:has(input:checked)):hover{color:var(--color-accent) !important}" +
       // ---- buttons: the segmented control's solid-green look, globally, with a PillNav hover ----
       // Rest: deep-green pill, white label. Hover: a white circle rises from the bottom edge and
       // fills the pill (the PillNav effect, done with a pseudo-element instead of GSAP + extra spans,
@@ -37,6 +43,103 @@
       ".btn:disabled::before{display:none}" +
       // the sidebar is itself the accent colour, so a solid-green button there would vanish
       ".dc-sidebar .btn{background:transparent !important;border-color:rgba(255,255,255,.45) !important}" +
+      // ---- the marketing loader: a toastie doing laps of a ring ----
+      // The arm spins; the toastie counter-spins by the same amount so it stays upright as it
+      // travels, and adds its own slow wobble on top. Steam drifts on a third, shorter cycle.
+      "@keyframes dc-orbit{to{transform:rotate(360deg)}}" +
+      "@keyframes dc-unspin{to{transform:rotate(-360deg)}}" +
+      "@keyframes dc-wobble{0%,100%{transform:rotate(-9deg)}50%{transform:rotate(9deg)}}" +
+      "@keyframes dc-steam{0%{opacity:0;transform:translateY(3px)}40%{opacity:.7}100%{opacity:0;transform:translateY(-6px)}}" +
+      "@keyframes dc-track-spin{to{transform:rotate(360deg)}}" +
+      ".dc-toastie-orbit{position:relative;width:92px;height:92px}" +
+      ".dc-toastie-track{position:absolute;inset:0;border-radius:50%;border:3px solid rgba(var(--dc-glow),.14);" +
+      "border-top-color:var(--color-accent);animation:dc-track-spin 1.6s linear infinite}" +
+      ".dc-toastie-arm{position:absolute;inset:0;animation:dc-orbit 2.6s linear infinite}" +
+      ".dc-toastie{position:absolute;top:-16px;left:50%;margin-left:-17px;" +
+      "animation:dc-unspin 2.6s linear infinite,dc-wobble 1.1s ease-in-out infinite}" +
+      ".dc-toastie-steam{animation:dc-steam 1.4s ease-out infinite}" +
+      "@media (prefers-reduced-motion:reduce){.dc-toastie-arm,.dc-toastie,.dc-toastie-steam" +
+      "{animation:none}.dc-toastie-track{animation-duration:3s}}" +
+      // ---- tiled cards: MagicBento (reactbits), rebuilt in CSS + the controller below ----
+      // The component itself cannot be dropped in: UI/ is a pinned export whose DOM belongs to
+      // React, and GSAP is not loadable here. Every effect it ships is reproducible without either —
+      // border glow and spotlight are custom properties driven from one rAF loop, tilt/magnetism are
+      // a transform, particles and the click ripple are keyframes. Glow colour is the theme accent.
+      ":root{--dc-glow:31,74,69}" +
+      ".dc-bento{position:relative;overflow:hidden;--dc-glow-x:50%;--dc-glow-y:50%;--dc-glow-intensity:0;" +
+      "--dc-glow-radius:220px;transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .3s ease}" +
+      ".dc-bento:hover{box-shadow:0 6px 22px rgba(var(--dc-glow),.16),0 0 26px rgba(var(--dc-glow),.06)}" +
+      // the glow is a ring: a radial gradient masked down to the padding box's edge
+      ".dc-bento::after{content:'';position:absolute;inset:0;padding:2px;border-radius:inherit;pointer-events:none;" +
+      "z-index:2;background:radial-gradient(var(--dc-glow-radius) circle at var(--dc-glow-x) var(--dc-glow-y)," +
+      "rgba(var(--dc-glow),calc(var(--dc-glow-intensity) * .85)) 0%," +
+      "rgba(var(--dc-glow),calc(var(--dc-glow-intensity) * .35)) 32%,transparent 62%);" +
+      "-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;" +
+      "mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}" +
+      ".dc-spotlight{position:fixed;width:680px;height:680px;border-radius:50%;pointer-events:none;z-index:5;" +
+      "opacity:0;transform:translate(-50%,-50%);transition:opacity .28s ease;background:radial-gradient(circle," +
+      "rgba(var(--dc-glow),.10) 0%,rgba(var(--dc-glow),.05) 25%,rgba(var(--dc-glow),.02) 45%,transparent 70%)}" +
+      "@keyframes dc-particle{0%{transform:translate(0,0) scale(0);opacity:0}" +
+      "18%{transform:translate(0,0) scale(1);opacity:.85}" +
+      "100%{transform:translate(var(--dx),var(--dy)) scale(.5);opacity:0}}" +
+      ".dc-particle{position:absolute;width:4px;height:4px;border-radius:50%;pointer-events:none;z-index:3;" +
+      "background:rgba(var(--dc-glow),.8);box-shadow:0 0 6px rgba(var(--dc-glow),.45);" +
+      "animation:dc-particle var(--dur) ease-out infinite}" +
+      "@keyframes dc-ripple{from{transform:scale(0);opacity:.55}to{transform:scale(1);opacity:0}}" +
+      ".dc-ripple{position:absolute;border-radius:50%;pointer-events:none;z-index:3;background:radial-gradient(circle," +
+      "rgba(var(--dc-glow),.32) 0%,rgba(var(--dc-glow),.16) 30%,transparent 70%);" +
+      "animation:dc-ripple .75s cubic-bezier(.22,1,.36,1) forwards}" +
+      "@media (prefers-reduced-motion:reduce){.dc-bento{transition:none}.dc-spotlight,.dc-particle{display:none}}" +
+      // ---- typography: Outfit only, on three weights ----
+      // 856 titles and numbers · 577 everything else · 267 captions and muted lines. The export
+      // hard-codes 400/500/600/800 inline on its numbers and status words, and inline styles beat a
+      // stylesheet, so those four are mapped onto the scale by matching the style attribute itself.
+      ":root{--font-heading:'Outfit',system-ui,sans-serif !important;--font-body:'Outfit',system-ui,sans-serif !important;" +
+      "--font-heading-weight:856 !important}" +
+      "body,button,input,select,textarea,table{font-family:'Outfit',system-ui,sans-serif}" +
+      "body{font-weight:577}" +
+      // the export sets Archivo + a width axis on headings; Outfit has neither
+      "h1,h2,h3,h4,h5,h6{font-family:'Outfit',system-ui,sans-serif !important;font-weight:856 !important;" +
+      "font-stretch:normal !important}" +
+      ".card-title,.dialog-title{font-weight:856 !important}" +
+      ".card-body,.card-meta,.card-kicker,.dialog-body,small,figcaption{font-weight:267 !important}" +
+      "::placeholder{font-weight:267}" +
+      // muted colour is this design's marker for a caption or a secondary line
+      "[style*='color: var(--color-neutral-400)'],[style*='color: var(--color-neutral-500)']," +
+      "[style*='color:var(--color-neutral-400)'],[style*='color:var(--color-neutral-500)']{font-weight:267}" +
+      ".btn,.tag,.seg-opt,th{font-weight:577 !important}" +
+      // last, so a weight the design stated explicitly wins over the rules above
+      "[style*='font-weight: 400'],[style*='font-weight:400']{font-weight:577 !important}" +
+      "[style*='font-weight: 500'],[style*='font-weight:500'],[style*='font-weight: 600'],[style*='font-weight:600']," +
+      "[style*='font-weight: 700'],[style*='font-weight:700'],[style*='font-weight: 800'],[style*='font-weight:800']" +
+      "{font-weight:856 !important}" +
+      // ---- changing screens: the sidebar's highlight slides, the new screen rises in ----
+      // The highlight is a pseudo-element of the nav list rather than each item's own background, so
+      // one pill travels between items instead of one blinking off and another on. Its box comes from
+      // custom properties the bridge measures off the active item after every render.
+      ".dc-sidebar-nav{position:relative}" +
+      ".dc-sidebar-nav::before{content:'';position:absolute;left:var(--dc-nav-left,8px);top:var(--dc-nav-top,0);" +
+      "width:var(--dc-nav-w,0);height:var(--dc-nav-h,0);border-radius:var(--radius-md);" +
+      "background:var(--color-bg);opacity:0;pointer-events:none;z-index:0}" +
+      ".dc-sidebar-nav.dc-nav-ready::before{opacity:1;transition:top .42s cubic-bezier(.34,1.28,.42,1)," +
+      "height .3s ease,left .3s ease,width .3s ease,opacity .2s ease}" +
+      ".dc-sidebar-nav.dc-nav-none::before{opacity:0}" +  // a screen with no nav item (profile, setup)
+      ".dc-sidebar-nav > div{position:relative;z-index:1;background:transparent !important;transition:color .28s ease}" +
+      ".dc-sidebar-nav > div:hover{color:var(--color-neutral-100)}" +
+      "@keyframes dc-row-rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}" +
+      ".dc-search-row{animation:dc-row-rise .26s cubic-bezier(.22,1,.36,1) both;transition:background .16s ease}" +
+      ".dc-search-row:hover{background:var(--color-neutral-200) !important}" +
+      ".dc-cal-day{animation:dc-row-rise .2s cubic-bezier(.22,1,.36,1) both;transition:background .14s ease,color .14s ease}" +
+      ".dc-cal-day:hover{background:var(--color-neutral-200)}" +
+      // the platform filter icons — the only 18px glyphs in the export — read small next to the cards
+      "svg[width='18'][height='18']{width:22px;height:22px}" +
+      "button:has(> svg[width='18']){transition:transform .18s cubic-bezier(.22,1,.36,1)}" +
+      "button:has(> svg[width='18']):hover{transform:translateY(-1px) scale(1.08)}" +
+      "@keyframes dc-screen-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}" +
+      ".scrollpane.dc-screen-in{animation:dc-screen-in .34s cubic-bezier(.22,1,.36,1) both}" +
+      "@media (prefers-reduced-motion:reduce){.dc-sidebar-nav.dc-nav-ready::before{transition:none}" +
+      ".scrollpane.dc-screen-in,.dc-search-row{animation:none}" +
+      ".seg:not(.seg-dark) .seg-opt::before,.btn::before{transition:none}}" +
       // ---- the agents' thinking state: mascot + animated ellipsis ----
       "@keyframes dc-dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}" +
       ".dc-dots::after{content:'.';animation:dc-dots 1.3s steps(1,end) infinite}" +
@@ -98,6 +201,12 @@
         if (st.top === "76px") pops[i].classList.add("dc-profile-menu");
         else if (st.bottom === "64px") pops[i].classList.add("dc-overlord-panel");
       }
+      // A card painting its own background is a special panel, not a tile: the dark chart card's
+      // hover tooltip is drawn outside its own box, and the bento treatment clips it.
+      var cards = document.querySelectorAll(".card.elev-sm:not(.dc-no-bento)");
+      for (var c = 0; c < cards.length; c++) {
+        if (cards[c].style && cards[c].style.backgroundColor) cards[c].classList.add("dc-no-bento");
+      }
       if (document.querySelector(".dc-sidebar")) return;  // found once; skip the wide scan per mutation
       var divs = document.querySelectorAll("div[style]");
       for (var j = 0; j < divs.length; j++) {
@@ -118,6 +227,7 @@
   var origRender = P.renderVals;
   var origMount = P.componentDidMount;
   var origUnmount = P.componentWillUnmount;
+  var origDidUpdate = P.componentDidUpdate;
   // Shown one at a time beside the mascot while a turn is in flight. Kept in Tony's register.
   var THINKING_WORDS = ["Thinking", "Pondering", "Mulling it over", "Chewing on it", "Turning it over",
     "Noodling on it", "Having a think", "Weighing it up", "Working it out", "Putting it together",
@@ -127,6 +237,46 @@
     while (pick === current) pick = THINKING_WORDS[Math.floor(Math.random() * THINKING_WORDS.length)];
     return pick;
   }
+  // Where the header search can take you. `keys` are the words people actually type for a place
+  // that is not called that: "transcript" for the call log, "billing" for the profile.
+  var SEARCH_INDEX = [
+    { label: "Overview", sub: "Today's calls, bookings and quick actions", screen: "overview", keys: "home dashboard kpi covers containment" },
+    { label: "Voice AI calls", sub: "Call log, transcripts and summaries", screen: "calls", keys: "transcript recording phone log outcome" },
+    { label: "Marketing", sub: "Trending content scored for your niche", screen: "marketing", keys: "trends tiktok instagram youtube shorts scan scripts" },
+    { label: "Callbacks", sub: "People waiting on a call back", screen: "callbacks", keys: "queue waiting unanswered questions review" },
+    { label: "Analytics", sub: "Impact, Voice Ops and Insights", screen: "analytics", keys: "metrics report handoff latency cost minutes" },
+    { label: "Business context", sub: "Menu and knowledge the agents answer from", screen: "setup", keys: "menu research packet hours allergens prices" },
+    { label: "Profile settings", sub: "Your details, plan and usage", screen: "profile", keys: "account billing plan minutes owner timezone" },
+    { label: "My saves", sub: "Trends you saved to film", screen: "marketing", keys: "saved bookmarks scripts", act: "saves" },
+    { label: "My likes", sub: "Trends you liked", screen: "marketing", keys: "liked hearts", act: "likes" },
+    { label: "Refresh trends now", sub: "Re-read the latest scan", screen: "marketing", keys: "reload update rescan", act: "refresh" },
+    { label: "Ask the Overlord", sub: "Questions across calls, bookings and trends", keys: "chat assistant help ask", act: "overlord" }
+  ];
+  function searchMatches(query) {
+    var q = query.trim().toLowerCase();
+    if (!q) return SEARCH_INDEX.slice(0, 6);
+    var hits = [];
+    SEARCH_INDEX.forEach(function (row) {
+      var label = row.label.toLowerCase();
+      var rank = label.indexOf(q) === 0 ? 0 : label.indexOf(q) > 0 ? 1
+        : (row.sub + " " + row.keys).toLowerCase().indexOf(q) >= 0 ? 2 : -1;
+      if (rank >= 0) hits.push({ row: row, rank: rank });
+    });
+    hits.sort(function (a, b) { return a.rank - b.rank; });
+    return hits.slice(0, 6).map(function (h) { return h.row; });
+  }
+  function shortWhen(iso) {
+    var at = new Date(iso);
+    if (isNaN(at)) return "—";
+    var hours = Math.round((at - Date.now()) / 3600000);
+    if (hours <= 0) return "due now";
+    if (hours < 24) return "in " + hours + "h";
+    return "in " + Math.round(hours / 24) + "d";
+  }
+  var TONE_DOT = {
+    urgent: "background:#a03a3a", warn: "background:var(--color-accent-500)",
+    info: "background:var(--color-accent)", ok: "background:#3a7a4a"
+  };
   var MAX_CHAT_RETRIES = 4;  // ~4 cooldowns before the question gives up and reports back
   var PLACEHOLDER_TREND = { id: "_none", niche: true, platform: "", score: 0, title: "No scan yet", why: "" };
   var BAND_STYLE = {
@@ -146,7 +296,18 @@
     setOverlordDraft: function () {}, overlordKeyDown: function () {}, sendOverlord: function () {},
     chartRange7: true, chartRange30: false, setChartRange7: function () {}, setChartRange30: function () {},
     chartDeltaArrow: "↑", chartDeltaLabel: "vs first day in last 7 days",
-    goProfile: function () {}
+    goProfile: function () {},
+    searchQuery: "", searchPlaceholder: "Search screens…", searchOpen: false, searchResults: [],
+    searchEmpty: false, searchEmptyLabel: "Nothing here by that name.",
+    setSearchQuery: function () {}, searchKeyDown: function () {}, openSearch: function () {},
+    notifications: [], notificationsOpen: false, notifEmpty: false, notifEmptyLabel: "Nothing waiting.",
+    notifHeading: "Needs you", notifTitle: "Notifications", notifBadgeCount: "",
+    notifBadgeStyle: "display:none", toggleNotifications: function () {},
+    marketingStats: [], marketingStatsNote: "",
+    calendarOpen: false, calendarMonth: "", calendarWeekdays: [], calendarDays: [], calendarHint: "",
+    calendarApplyLabel: "Apply", calendarApplyStyle: "padding:4px 13px;font-size:11px",
+    calendarApply: function () {}, calendarPrev: function () {}, calendarNext: function () {},
+    trendsLoading: false, trendsLoadingLabel: "Toasting your trends"
   };
 
   function api(path, opts) {
@@ -176,14 +337,63 @@
     // toggle instead of an open-then-immediately-close.
     this.__clickOut = function (e) {
       var menu = document.querySelector(".dc-profile-menu");
-      if (!menu || !menu.parentElement || menu.parentElement.contains(e.target)) return;
-      if (self.state.profileMenuOpen) self.toggleProfileMenu();
+      if (menu && menu.parentElement && !menu.parentElement.contains(e.target) && self.state.profileMenuOpen) {
+        self.toggleProfileMenu();
+      }
+      var search = document.querySelector(".dc-search");
+      if (self.state.searchOpen && search && !search.contains(e.target)) self.setState({ searchOpen: false });
+      var bell = document.querySelector(".dc-bell");
+      if (self.state.notificationsOpen && bell && !bell.contains(e.target)) self.setState({ notificationsOpen: false });
+      var period = document.querySelector(".dc-period");
+      if (self.state.calendarOpen && period && !period.contains(e.target)) self.setState({ calendarOpen: false });
     };
     if (typeof document !== "undefined") document.addEventListener("mousedown", this.__clickOut, true);
+    this.__onResize = function () { self.__placeNavPill(); };
+    if (typeof window !== "undefined") window.addEventListener("resize", this.__onResize);
+    this.__placeNavPill();
+    this.__initBento();
+    this.__initSparks();
+  };
+  P.componentDidUpdate = function () {
+    if (origDidUpdate) { try { origDidUpdate.apply(this, arguments); } catch (e) { console.error(e); } }
+    this.__placeNavPill();
+  };
+  // Measure the active nav item and hand its box to the sliding highlight. Reads the item's own
+  // inline style, because the export gives the nav items no class — only the active one is painted.
+  P.__placeNavPill = function () {
+    var nav = typeof document !== "undefined" && document.querySelector(".dc-sidebar-nav");
+    if (!nav) return;
+    var kids = nav.children, active = null;
+    for (var i = 0; i < kids.length; i++) {
+      if (kids[i].style && kids[i].style.background) active = kids[i];
+    }
+    nav.classList.toggle("dc-nav-none", !active);
+    if (!active) return;
+    nav.style.setProperty("--dc-nav-top", active.offsetTop + "px");
+    nav.style.setProperty("--dc-nav-left", active.offsetLeft + "px");
+    nav.style.setProperty("--dc-nav-w", active.offsetWidth + "px");
+    nav.style.setProperty("--dc-nav-h", active.offsetHeight + "px");
+    if (!nav.classList.contains("dc-nav-ready")) {
+      // next frame, so the first placement lands silently instead of sliding in from the top
+      (window.requestAnimationFrame || setTimeout)(function () { nav.classList.add("dc-nav-ready"); });
+    }
   };
   P.componentWillUnmount = function () {
     clearInterval(this.__timer);
     if (this.__live) { clearInterval(this.__live.thinkTimer); clearTimeout(this.__live.retryTimer); }
+    if (this.__onResize && typeof window !== "undefined") window.removeEventListener("resize", this.__onResize);
+    if (this.__bento) {
+      document.removeEventListener("mousemove", this.__bento.onMove);
+      document.removeEventListener("click", this.__bento.onClick, true);
+      this.__bento.spot.remove();
+      this.__bento = null;
+    }
+    if (this.__sparks) {
+      document.removeEventListener("click", this.__sparks.onClick, true);
+      window.removeEventListener("resize", this.__sparks.size);
+      this.__sparks.canvas.remove();
+      this.__sparks = null;
+    }
     if (this.__clickOut && typeof document !== "undefined") document.removeEventListener("mousedown", this.__clickOut, true);
     if (origUnmount) { try { origUnmount.call(this); } catch (e) { console.error(e); } }
   };
@@ -252,7 +462,7 @@
     // paths, because the case it exists for is the one where no data has loaded yet.
     var refreshing = !!(live && live.refreshing);
     vals.refreshTrendsLabel = refreshing ? "Refreshing…" : "Refresh now";
-    vals.refreshTrendsStyle = "padding:3px 10px;font-size:11px;white-space:nowrap;flex:none"
+    vals.refreshTrendsStyle = "padding:5px 14px;font-size:11px;white-space:nowrap;flex:none;margin-left:auto"
       + (refreshing ? ";opacity:.6;cursor:progress" : "");
     vals.refreshTrends = function () { self.refreshTrends(); };
     // Overlord chat box (anchor patched in by dashboard/ui.py) — bound on both paths so the panel is
@@ -267,6 +477,8 @@
     vals.setChartRange7 = function () { self.setChartRange("7d"); };
     vals.setChartRange30 = function () { self.setChartRange("30d"); };
     vals.goProfile = function () { self.setScreen("profile"); };
+    this.__headerVals(vals);
+    this.__calendarVals(vals);
     // My saves / My likes rows open the trend they name
     vals.savedLikedTrends = (vals.savedLikedTrends || []).map(function (t) {
       return Object.assign({}, t, { onOpen: function () { self.openTrend(t.id); } });
@@ -276,13 +488,18 @@
       vals.trendCountLabel = refreshing ? "Refreshing trends…"
         : (live && (live.refreshError || live.error) ? "Backend unavailable: " + (live.refreshError || live.error) : "Loading…");
       vals.showMoreLabel = ""; vals.callLogCountLabel = "Loading calls…";
+      vals.trendsLoading = !(live && live.error);
+      vals.trendsLoadingLabel = "Warming up the grill";
       vals.freshness = { asOf: live && live.error ? "unavailable" : "loading", timezone: "", staleAfterMinutes: 60 };
       vals.marketingChat = this.__chatRows(vals.marketingChat);
       vals.overlordThread = this.__chatRows(vals.overlordThread);
+      this.__headerVals(vals);
+    this.__calendarVals(vals);
       return vals;
     }
     var s = this.state;
-    var a = live.analytics[s.analyticsPeriod] || d.analytics;
+    var a = (s.analyticsPeriod === "custom" && live.customAnalytics)
+      || live.analytics[s.analyticsPeriod] || d.analytics;
     var ov = d.overview;
 
     // ---- header / identity ----
@@ -346,10 +563,12 @@
       vals.savedLikedTrends = []; vals.savedCount = 0; vals.likedCount = 0;
     } else {
       vals.trendCountLabel = vals.trendCountLabel + " · scan " + d.trends.scanId;
-      if (d.trends.platformsNote) vals.trendCountLabel = vals.trendCountLabel + " · " + d.trends.platformsNote;
     }
+    vals.trendsLoading = !!refreshing;
+    vals.trendsLoadingLabel = "Toasting your trends";
     if (refreshing) vals.trendCountLabel = "Refreshing trends…";
     else if (live.refreshError) vals.trendCountLabel = vals.trendCountLabel + " · refresh failed: " + live.refreshError;
+    this.__marketingStats(vals, d.trends);
     if (vals.scriptModalTrend) {
       var t = live.angles[s.scriptModalTrendId];
       var card = d.trends.items.filter(function (x) { return x.id === s.scriptModalTrendId; })[0];
@@ -370,6 +589,320 @@
   // A turn in flight is not a message: it is the mascot, one of THINKING_WORDS, and an animated
   // ellipsis, in place of the design's "…" bubble. While a free model is only rate-limited (not out
   // of quota for the day) the question stays open and this keeps running until the retry lands.
+  // The scan's own numbers, as one strip above the agent. Everything here is already in the trends
+  // payload — this only decides what is worth a slot and how it reads.
+  P.__marketingStats = function (vals, t) {
+    var cell = "min-width:0";
+    var stats = [{ label: "Showing", value: (t.items || []).length + " trends", style: cell }];
+    var credits = t.credits && typeof t.credits.remaining === "number" ? t.credits : null;
+    if (credits) {
+      stats.push({ label: "Scan credits", value: credits.remaining + " left", style: cell });
+      if (credits.spent_this_scan) stats.push({ label: "This scan", value: credits.spent_this_scan + " spent", style: cell });
+    } else if (t.offline) {
+      stats.push({ label: "Scan credits", value: "Offline", style: cell });
+    }
+    stats.push({ label: "Saved", value: String(t.savedCount || 0), style: cell });
+    if (t.nextScanAt) stats.push({ label: "Next scan", value: shortWhen(t.nextScanAt), style: cell });
+    vals.marketingStats = stats;
+    vals.marketingStatsNote = t.platformsNote || "";
+  };
+
+  // ---- Analytics: the Custom period's calendar ----
+  // Two clicks pick a range (first sets the start, second the end); Apply asks the API for
+  // period=custom with real dates. Monday-first, because the business runs on a Mon-Fri week.
+  var WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  var MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September",
+    "October", "November", "December"];
+  function isoDay(date) {
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-"
+      + String(date.getDate()).padStart(2, "0");
+  }
+  function shortDay(iso) {
+    var parts = String(iso).split("-");
+    return Number(parts[2]) + " " + MONTHS[Number(parts[1]) - 1].slice(0, 3);
+  }
+  P.__calendarVals = function (vals) {
+    var self = this, s = this.state;
+    var cursor = s.calMonth ? new Date(s.calMonth + "-01T00:00:00") : new Date();
+    cursor.setDate(1);
+    var year = cursor.getFullYear(), month = cursor.getMonth();
+    var first = new Date(year, month, 1);
+    var lead = (first.getDay() + 6) % 7;  // Sunday is 0 in JS; this week starts on Monday
+    var length = new Date(year, month + 1, 0).getDate();
+    var todayIso = isoDay(new Date()), start = s.calStart || null, end = s.calEnd || null;
+
+    var days = [];
+    for (var blank = 0; blank < lead; blank++) days.push({ label: "", style: "visibility:hidden", onClick: function () {} });
+    for (var day = 1; day <= length; day++) {
+      var iso = isoDay(new Date(year, month, day));
+      var inRange = start && end && iso >= start && iso <= end;
+      var edge = iso === start || iso === end;
+      var future = iso > todayIso;
+      var style = "font-size:12px;text-align:center;padding:6px 0;border-radius:8px;"
+        + (future ? "color:var(--color-neutral-400);cursor:not-allowed" : "cursor:pointer")
+        + (edge ? ";background:var(--color-accent);color:#fff;font-weight:856"
+          : inRange ? ";background:var(--color-accent-100);color:var(--color-accent)"
+            : iso === todayIso ? ";box-shadow:inset 0 0 0 1px var(--color-accent)" : "");
+      days.push({ label: String(day), style: style,
+        onClick: (function (picked, blocked) {
+          return function () { if (!blocked) self.pickCalendarDay(picked); };
+        })(iso, future) });
+    }
+    vals.calendarOpen = !!s.calendarOpen;
+    vals.calendarMonth = MONTHS[month] + " " + year;
+    vals.calendarWeekdays = WEEKDAYS;
+    vals.calendarDays = days;
+    vals.calendarHint = start && end ? shortDay(start) + " – " + shortDay(end)
+      : start ? shortDay(start) + " – pick the end" : "Pick a start date";
+    vals.calendarApplyLabel = start && end ? "Apply" : "Pick dates";
+    vals.calendarApplyStyle = "padding:4px 13px;font-size:11px" + (start && end ? "" : ";opacity:.5;pointer-events:none");
+    vals.calendarApply = function () { self.applyCalendar(); };
+    vals.calendarPrev = function () { self.shiftCalendar(-1); };
+    vals.calendarNext = function () { self.shiftCalendar(1); };
+  };
+  P.shiftCalendar = function (delta) {
+    var s = this.state;
+    var cursor = s.calMonth ? new Date(s.calMonth + "-01T00:00:00") : new Date();
+    cursor.setDate(1);
+    cursor.setMonth(cursor.getMonth() + delta);
+    this.setState({ calMonth: isoDay(cursor).slice(0, 7) });
+  };
+  P.pickCalendarDay = function (iso) {
+    var s = this.state;
+    if (!s.calStart || (s.calStart && s.calEnd)) return this.setState({ calStart: iso, calEnd: null });
+    if (iso < s.calStart) return this.setState({ calStart: iso, calEnd: s.calStart });
+    this.setState({ calEnd: iso });
+  };
+  P.applyCalendar = function () {
+    var self = this, s = this.state, live = this.__live;
+    if (!s.calStart || !s.calEnd) return;
+    this.setState({ calendarOpen: false, analyticsPeriod: "custom" });
+    api("/api/dashboard/analytics?period=custom&start=" + encodeURIComponent(s.calStart)
+      + "&end=" + encodeURIComponent(s.calEnd))
+      .then(function (a) { live.customAnalytics = a; self.setState({}); })
+      .catch(function (e) { console.error("[dashboard] custom analytics", e); });
+  };
+
+  // ---- MagicBento + ClickSpark, ported (see the CSS block at the top of this file) ----
+  // Every tiled card on every screen. The two big marketing panels are excluded: tilting a card you
+  // are typing into is not a feature.
+  var BENTO_SELECTOR = ".card.elev-sm:not(.mkt-chat):not(.dc-mkt-stats):not(.dc-no-bento)";
+  var SPOT_RADIUS = 340, PARTICLES = 8, MOBILE_BREAKPOINT = 768;
+  function bentoOff() {
+    return (typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT) || reducedMotion();
+  }
+  P.__initBento = function () {
+    if (this.__bento || typeof document === "undefined") return;
+    var self = this, frame = null, latest = null;
+    var spot = document.createElement("div");
+    spot.className = "dc-spotlight";
+    document.body.appendChild(spot);
+    var onMove = function (e) {
+      latest = { x: e.clientX, y: e.clientY };
+      if (frame) return;
+      frame = requestAnimationFrame(function () { frame = null; self.__bentoFrame(latest, spot); });
+    };
+    var onClick = function (e) { self.__bentoRipple(e); };
+    document.addEventListener("mousemove", onMove, { passive: true });
+    document.addEventListener("click", onClick, true);
+    this.__bento = { spot: spot, onMove: onMove, onClick: onClick, hovered: null };
+  };
+  // One pass per frame: proximity glow for every card, tilt and magnetism for the one under the
+  // cursor, and the spotlight's own position and strength. Ported from MagicBento's GSAP tweens --
+  // the transitions live in CSS instead, so this only writes values.
+  P.__bentoFrame = function (at, spot) {
+    var bento = this.__bento;
+    if (!at || !bento) return;
+    if (bentoOff()) { spot.style.opacity = 0; return; }
+    var cards = document.querySelectorAll(BENTO_SELECTOR);
+    var proximity = SPOT_RADIUS * 0.5, fade = SPOT_RADIUS * 0.75, nearest = Infinity, hovered = null;
+    var rects = [];  // measure everything before writing anything, or each write forces a layout
+    for (var r = 0; r < cards.length; r++) rects.push(cards[r].getBoundingClientRect());
+    for (var i = 0; i < cards.length; i++) {
+      var card = cards[i], rect = rects[i];
+      if (!card.classList.contains("dc-bento")) card.classList.add("dc-bento");
+      if (rect.bottom < -200 || rect.top > window.innerHeight + 200) {
+        card.style.setProperty("--dc-glow-intensity", "0");
+        continue;
+      }
+      var cx = rect.left + rect.width / 2, cy = rect.top + rect.height / 2;
+      var gap = Math.max(0, Math.hypot(at.x - cx, at.y - cy) - Math.max(rect.width, rect.height) / 2);
+      nearest = Math.min(nearest, gap);
+      var glow = gap <= proximity ? 1 : gap <= fade ? (fade - gap) / (fade - proximity) : 0;
+      card.style.setProperty("--dc-glow-x", ((at.x - rect.left) / rect.width * 100) + "%");
+      card.style.setProperty("--dc-glow-y", ((at.y - rect.top) / rect.height * 100) + "%");
+      card.style.setProperty("--dc-glow-intensity", String(glow));
+      card.style.setProperty("--dc-glow-radius", SPOT_RADIUS + "px");
+      var inside = at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
+      if (inside) {
+        hovered = card;
+        var dx = at.x - cx, dy = at.y - cy;
+        card.style.transform = "perspective(900px) rotateX(" + (-(dy / (rect.height / 2)) * 5).toFixed(2)
+          + "deg) rotateY(" + ((dx / (rect.width / 2)) * 5).toFixed(2) + "deg) translate3d("
+          + (dx * 0.03).toFixed(1) + "px," + (dy * 0.03).toFixed(1) + "px,0)";
+      } else if (card.style.transform) {
+        card.style.transform = "";
+      }
+    }
+    if (hovered !== bento.hovered) {
+      this.__bentoParticles(bento.hovered, false, null);
+      this.__bentoParticles(hovered, true, hovered ? rects[[].indexOf.call(cards, hovered)] : null);
+      bento.hovered = hovered;
+    }
+    var strength = nearest <= proximity ? 1 : nearest <= fade ? (fade - nearest) / (fade - proximity) : 0;
+    spot.style.left = at.x + "px";
+    spot.style.top = at.y + "px";
+    spot.style.opacity = String(strength);
+  };
+  P.__bentoParticles = function (card, on, rect) {
+    if (!card) return;
+    var old = card.querySelectorAll(".dc-particle");
+    for (var i = 0; i < old.length; i++) old[i].remove();
+    if (!on || bentoOff()) return;
+    rect = rect || card.getBoundingClientRect();
+    for (var n = 0; n < PARTICLES; n++) {
+      var dot = document.createElement("div");
+      dot.className = "dc-particle";
+      dot.style.left = (Math.random() * rect.width) + "px";
+      dot.style.top = (Math.random() * rect.height) + "px";
+      dot.style.setProperty("--dx", ((Math.random() - 0.5) * 70).toFixed(0) + "px");
+      dot.style.setProperty("--dy", ((Math.random() - 0.5) * 70).toFixed(0) + "px");
+      dot.style.setProperty("--dur", (2.2 + Math.random() * 1.8).toFixed(2) + "s");
+      dot.style.animationDelay = (n * 0.09).toFixed(2) + "s";
+      card.appendChild(dot);
+    }
+  };
+  P.__bentoRipple = function (e) {
+    if (bentoOff() || !e.target || !e.target.closest) return;
+    var card = e.target.closest(BENTO_SELECTOR);
+    if (!card) return;
+    var rect = card.getBoundingClientRect();
+    var x = e.clientX - rect.left, y = e.clientY - rect.top;
+    var reach = Math.max(Math.hypot(x, y), Math.hypot(x - rect.width, y),
+      Math.hypot(x, y - rect.height), Math.hypot(x - rect.width, y - rect.height));
+    var ripple = document.createElement("div");
+    ripple.className = "dc-ripple";
+    ripple.style.width = ripple.style.height = (reach * 2) + "px";
+    ripple.style.left = (x - reach) + "px";
+    ripple.style.top = (y - reach) + "px";
+    ripple.addEventListener("animationend", function () { ripple.remove(); });
+    card.appendChild(ripple);
+  };
+
+  // ClickSpark: one fixed canvas over the whole app, drawn only while sparks are alive rather than
+  // on a permanent rAF loop.
+  var SPARK = { color: "#1f4a45", size: 11, radius: 16, count: 8, duration: 420 };
+  P.__initSparks = function () {
+    if (this.__sparks || typeof document === "undefined") return;
+    var canvas = document.createElement("canvas");
+    canvas.style.cssText = "position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:70";
+    document.body.appendChild(canvas);
+    var live = [], running = false, ctx = canvas.getContext("2d");
+    var size = function () {
+      var ratio = window.devicePixelRatio || 1;
+      canvas.width = window.innerWidth * ratio;
+      canvas.height = window.innerHeight * ratio;
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+    };
+    size();
+    var draw = function (now) {
+      ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+      live = live.filter(function (s) {
+        var t = (now - s.at) / SPARK.duration;
+        if (t >= 1) return false;
+        var eased = t * (2 - t);  // ease-out, the component's default
+        var far = eased * SPARK.radius, len = SPARK.size * (1 - eased);
+        ctx.strokeStyle = SPARK.color;
+        ctx.globalAlpha = 1 - eased;
+        ctx.lineWidth = 2;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(s.x + far * Math.cos(s.angle), s.y + far * Math.sin(s.angle));
+        ctx.lineTo(s.x + (far + len) * Math.cos(s.angle), s.y + (far + len) * Math.sin(s.angle));
+        ctx.stroke();
+        return true;
+      });
+      if (live.length) requestAnimationFrame(draw);
+      else { running = false; ctx.clearRect(0, 0, window.innerWidth, window.innerHeight); }
+    };
+    var onClick = function (e) {
+      if (reducedMotion()) return;
+      var now = performance.now();
+      for (var i = 0; i < SPARK.count; i++) {
+        live.push({ x: e.clientX, y: e.clientY, angle: (2 * Math.PI * i) / SPARK.count, at: now });
+      }
+      if (!running) { running = true; requestAnimationFrame(draw); }
+    };
+    document.addEventListener("click", onClick, true);
+    window.addEventListener("resize", size);
+    this.__sparks = { canvas: canvas, onClick: onClick, size: size };
+  };
+
+  // ---- header: search over the app's own screens, and the bell ----
+  P.__headerVals = function (vals) {
+    var self = this, s = this.state, live = this.__live, d = live && live.data;
+    var query = s.searchQuery || "";
+    var rows = searchMatches(query);
+    vals.searchQuery = query;
+    vals.searchPlaceholder = "Search screens…";
+    vals.searchOpen = !!s.searchOpen;
+    vals.searchEmpty = rows.length === 0;
+    vals.searchEmptyLabel = "Nothing in the app by that name.";
+    vals.searchResults = rows.map(function (row, i) {
+      return { label: row.label, sub: row.sub,
+        // the stagger is what makes the list feel like it unrolls rather than blinks in
+        style: "padding:8px 12px;border-radius:var(--radius-md);cursor:pointer;animation-delay:" + (i * 32) + "ms"
+          + (i === (s.searchIndex || 0) ? ";background:var(--color-neutral-200)" : ""),
+        onClick: function () { self.goSearchResult(row); } };
+    });
+    vals.setSearchQuery = function (e) { self.setState({ searchQuery: e.target.value, searchOpen: true, searchIndex: 0 }); };
+    vals.openSearch = function () { self.setState({ searchOpen: true }); };
+    vals.searchKeyDown = function (e) { self.searchKeyDown(e, rows); };
+
+    var notes = (d && d.notifications) || [];
+    var waiting = notes.filter(function (n) { return n.tone === "urgent" || n.tone === "warn"; }).length;
+    vals.notifications = notes.map(function (n) {
+      return { title: n.title, sub: n.sub,
+        style: "padding:8px 12px;border-radius:var(--radius-md);cursor:pointer",
+        dotStyle: "display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle;"
+          + (TONE_DOT[n.tone] || TONE_DOT.info),
+        onClick: function () { self.setState({ notificationsOpen: false }); if (n.screen) self.setScreen(n.screen); } };
+    });
+    vals.notificationsOpen = !!s.notificationsOpen;
+    vals.notifEmpty = notes.length === 0;
+    vals.notifEmptyLabel = d ? "Nothing waiting." : "Still loading your data…";
+    vals.notifHeading = waiting ? "Needs you" : "Nothing urgent";
+    vals.notifTitle = waiting ? waiting + " thing" + (waiting === 1 ? "" : "s") + " need you" : "Notifications";
+    vals.notifBadgeCount = waiting || "";
+    vals.notifBadgeStyle = waiting
+      ? "position:absolute;top:-3px;right:-3px;min-width:16px;height:16px;padding:0 4px;border-radius:999px;"
+        + "background:var(--color-accent-500);color:var(--color-accent-900);font-size:10px;line-height:16px;"
+        + "text-align:center;font-weight:600;pointer-events:none"
+      : "display:none";
+    vals.toggleNotifications = function () {
+      self.setState(function (st) { return { notificationsOpen: !st.notificationsOpen, searchOpen: false }; });
+    };
+  };
+  P.goSearchResult = function (row) {
+    this.setState({ searchOpen: false, searchQuery: "", searchIndex: 0 });
+    if (row.screen) this.setScreen(row.screen);
+    if (row.act === "saves" || row.act === "likes") this.openSavedLikedModal(row.act);
+    else if (row.act === "refresh") this.refreshTrends();
+    else if (row.act === "overlord" && !this.state.overlordOpen) this.toggleOverlord();
+  };
+  P.searchKeyDown = function (e, rows) {
+    var s = this.state, index = s.searchIndex || 0;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      var next = index + (e.key === "ArrowDown" ? 1 : -1);
+      this.setState({ searchOpen: true, searchIndex: (next + rows.length) % Math.max(1, rows.length) });
+    } else if (e.key === "Enter") {
+      if (rows[index]) this.goSearchResult(rows[index]);
+    } else if (e.key === "Escape") {
+      this.setState({ searchOpen: false, searchQuery: "" });
+    }
+  };
+
   P.__chatRows = function (rows) {
     var live = this.__live, word = (live && live.thinkWord) || THINKING_WORDS[0];
     return (rows || []).map(function (m) {
@@ -556,10 +1089,29 @@
   };
   P.approveGap = function (id) { this.__reviewGap(id, "approved"); };
   P.dismissGap = function (id) { this.__reviewGap(id, "dismissed"); };
+  var origSetScreen = P.setScreen;
+  P.setScreen = function (screen) {
+    if (this.state.screen !== screen) {
+      var pane = typeof document !== "undefined" && document.querySelector(".scrollpane:not(.mkt-scroll)");
+      if (pane) {
+        pane.classList.remove("dc-screen-in");
+        void pane.offsetWidth;  // reflow, so the same animation replays on the next screen too
+        pane.classList.add("dc-screen-in");
+        pane.scrollTop = 0;
+      }
+    }
+    return origSetScreen.apply(this, arguments);
+  };
   P.setChartRange = function (range) { this.setState({ chartRange: range }); };
   P.setAnalyticsPeriod = function (p) {
     var self = this, live = this.__live;
-    this.setState({ analyticsPeriod: p });
+    if (p === "custom") {  // the Custom option is the calendar's own button
+      return this.setState(function (s) {
+        return { analyticsPeriod: "custom", calendarOpen: true,
+          calMonth: s.calMonth || (s.calStart || isoDay(new Date())).slice(0, 7) };
+      });
+    }
+    this.setState({ analyticsPeriod: p, calendarOpen: false });
     if (live && !live.analytics[p]) {
       api("/api/dashboard/analytics?period=" + encodeURIComponent(p)).then(function (a) { live.analytics[p] = a; self.setState({}); })
         .catch(function (e) { console.error("[dashboard] analytics", e); });

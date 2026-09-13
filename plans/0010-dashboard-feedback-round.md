@@ -69,6 +69,22 @@ broken.
 - Removed the profile Edit button (no edit flow behind it) and the Notifications card (the toggles
   persisted a preference nothing acts on).
 
+## Follow-up 2: the pause was still sticking
+The first pass classified an unrecognised 429 as the day's quota, "to be safe". In practice Gemini's
+429s mostly name no quota at all, so that safe default *was* the bug: one burst still retired every
+free rung until midnight Pacific, and nothing re-checked. Two changes:
+
+- The transport now marks a 429 daily only when the body actually names a per-day quota
+  (`perday` / `dailylimit`). Everything else is a short wait. Guessing "short" and being wrong costs
+  a minute; guessing "daily" and being wrong costs the rest of the day.
+- Daily exhaustion writes a cooldown too (to the Pacific reset), so every block has a recorded reason
+  with an expiry. A model sitting in `exhausted` with **no** cooldown beside it — the state the
+  previous build wrote, and what a running instance already has on disk — gets one probe instead of
+  being inherited as dead. That is what un-pauses an agent that is already stuck.
+
+`rung_statuses` reads the same cooldowns, so the usage snapshot and its alerts agree with what
+`generate()` will actually do.
+
 ## Follow-up: the cooldown is a thinking state, not an answer
 Telling the owner "try again in about a minute" made a transient rate limit look like a failure. A
 cooldown now keeps the turn open instead:

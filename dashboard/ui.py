@@ -45,13 +45,89 @@ PATCHES: list[tuple[str, str]] = [
      '<div style="font-size:11px;color:var(--color-neutral-400);white-space:nowrap;flex:1">{{ businessLocation }}</div>'),
     ('<span class="tag tag-outline" style="white-space:nowrap;flex:none">Live prototype</span>',
      '<span class="tag tag-outline" style="white-space:nowrap;flex:none">{{ headerBadge }}</span>'),
-    # Marketing: a "Refresh now" button beside the trend count, so an empty or still-loading trend
-    # list has a manual way out (the bridge otherwise only polls every 60s).
+    # Marketing: the scan's own numbers (credits, posts, next scan) belong in one strip above the
+    # agent, not strung along the count line — which goes back to saying only how many are shown.
+    # "Refresh now" lives in that strip, pushed to its right edge.
     ('<div style="margin-bottom:14px">\n              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>\n            </div>',
-     '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">\n'
-     '              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>\n'
-     '              <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="Re-read the latest trend scan now">{{ refreshTrendsLabel }}</button>\n'
+     '<div style="margin-bottom:14px">\n'
+     '              <span style="font-size:11px;color:var(--color-neutral-500)">{{ trendCountLabel }}</span>\n'
      '            </div>'),
+    ('<div style="display:flex;flex-direction:column;gap:16px">\n'
+     '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column">',
+     '<div style="display:flex;flex-direction:column;gap:16px">\n'
+     '            <div class="card elev-sm dc-mkt-stats" style="padding:12px 16px;gap:8px">\n'
+     '              <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">\n'
+     '                <sc-for list="{{ marketingStats }}" as="ms" hint-placeholder-count="4">\n'
+     '                  <div style="{{ ms.style }}">\n'
+     '                    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--color-neutral-500);white-space:nowrap">{{ ms.label }}</div>\n'
+     '                    <div style="font-family:var(--font-heading);font-weight:856;font-size:16px;line-height:1.25;white-space:nowrap">{{ ms.value }}</div>\n'
+     '                  </div>\n'
+     '                </sc-for>\n'
+     '                <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="Re-read the latest trend scan now">{{ refreshTrendsLabel }}</button>\n'
+     '              </div>\n'
+     '              <sc-if value="{{ marketingStatsNote }}">\n'
+     '                <div style="font-size:11px;color:var(--color-neutral-500);line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ marketingStatsNote }}</div>\n'
+     '              </sc-if>\n'
+     '            </div>\n'
+     '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column">'),
+    # Marketing: a toastie orbiting a ring while the scan loads, in place of an empty column.
+    ('<sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">',
+     '<sc-if value="{{ trendsLoading }}">\n              <div class="dc-toastie-loader" style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:52px 0">\n                <div class="dc-toastie-orbit">\n                  <div class="dc-toastie-track"></div>\n                  <div class="dc-toastie-arm"><svg class="dc-toastie" viewBox="0 0 40 40" width="34" height="34" aria-hidden="true"><g class="dc-toastie-steam" fill="none" stroke="var(--color-accent)" stroke-width="1.6" stroke-linecap="round" opacity=".55"><path d="M15 9c-1.6-1.8 1.6-3.2 0-5"/><path d="M22 8.5c-1.6-1.8 1.6-3.2 0-5"/></g><path d="M6.5 26.5 19 13.5l14.5 5.5-12.5 13z" fill="var(--color-accent-300)" stroke="var(--color-accent-700)" stroke-width="1.6" stroke-linejoin="round"/><path d="M19 13.5 33.5 19l-3 3.2L15.8 17z" fill="var(--color-accent-200)" stroke="var(--color-accent-700)" stroke-width="1.4" stroke-linejoin="round"/><path d="M9.5 24.5c2.6 1.4 5 1.1 7.2-.6 2.3 2 4.7 2.2 7.2.5" fill="none" stroke="var(--color-accent-600)" stroke-width="1.7" stroke-linecap="round"/></svg></div>\n                </div>\n                <div style="font-size:12px;color:var(--color-neutral-500)">{{ trendsLoadingLabel }}<span class="dc-dots"></span></div>\n              </div>\n            </sc-if>\n            <sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">'),
+    # Analytics: Custom opens a calendar. The seg row becomes the popover's anchor; the grid and
+    # its selection are built in the bridge, which then asks for period=custom with real dates.
+    ('<div style="display:flex;align-items:center;gap:10px">\n            <div class="seg" style="font-size:12px">\n              <sc-for list="{{ periodOptions }}" as="po" hint-placeholder-count="3">\n                <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ po.active }}" onChange="{{ po.onSelect }}">{{ po.label }}</label>\n              </sc-for>\n            </div>\n          </div>',
+     '<div class="dc-period" style="display:flex;align-items:center;gap:10px;position:relative">\n            <div class="seg" style="font-size:12px">\n              <sc-for list="{{ periodOptions }}" as="po" hint-placeholder-count="3">\n                <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ po.active }}" onChange="{{ po.onSelect }}">{{ po.label }}</label>\n              </sc-for>\n            </div>\n            <sc-if value="{{ calendarOpen }}">\n              <div class="card elev-lg dc-calendar" style="position:absolute;top:40px;right:0;width:290px;z-index:60;padding:12px;gap:10px">\n                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">\n                  <button class="btn btn-ghost" style="padding:2px 9px;font-size:13px" onClick="{{ calendarPrev }}" title="Previous month">‹</button>\n                  <div style="font-family:var(--font-heading);font-weight:856;font-size:13px">{{ calendarMonth }}</div>\n                  <button class="btn btn-ghost" style="padding:2px 9px;font-size:13px" onClick="{{ calendarNext }}" title="Next month">›</button>\n                </div>\n                <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px">\n                  <sc-for list="{{ calendarWeekdays }}" as="wd" hint-placeholder-count="7">\n                    <div style="font-size:10px;text-align:center;color:var(--color-neutral-500);padding:2px 0">{{ wd }}</div>\n                  </sc-for>\n                  <sc-for list="{{ calendarDays }}" as="cd" hint-placeholder-count="35">\n                    <div class="dc-cal-day" style="{{ cd.style }}" onClick="{{ cd.onClick }}">{{ cd.label }}</div>\n                  </sc-for>\n                </div>\n                <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--color-divider);padding-top:9px">\n                  <span style="font-size:11px;color:var(--color-neutral-500)">{{ calendarHint }}</span>\n                  <button class="btn btn-primary" style="{{ calendarApplyStyle }}" onClick="{{ calendarApply }}">{{ calendarApplyLabel }}</button>\n                </div>\n              </div>\n            </sc-if>\n          </div>'),
+    # Typography: Outfit only. Archivo was the heading face; the bridge's stylesheet moves headings
+    # onto Outfit, so stop fetching it. The 100..900 range is the variable axis the weight scale
+    # (856 / 577 / 267) needs — a static-weight request would snap to the nearest 100.
+    ('<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&amp;family=Archivo:wdth,wght@75..100,400..900&amp;display=swap" rel="stylesheet">',
+     '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&amp;display=swap" rel="stylesheet">'),
+    # Header search: the export's box was decorative. Bind it and hang a results panel off it —
+    # the suggestions are places in the app, and picking one navigates there (see SEARCH_INDEX).
+    ('<div style="position:relative"><input class="input" placeholder="Search…" style="width:200px;padding-left:32px">',
+     '<div class="dc-search" style="position:relative">'
+     '<input class="input" placeholder="{{ searchPlaceholder }}" style="width:200px;padding-left:32px"'
+     ' value="{{ searchQuery }}" onInput="{{ setSearchQuery }}" onKeyDown="{{ searchKeyDown }}" onFocus="{{ openSearch }}">'),
+    ('stroke-width="1.4" style="position:absolute;left:10px;top:11px"><circle cx="6.8" cy="6.8" r="4.3"></circle><line x1="10" y1="10" x2="13.5" y2="13.5"></line></svg></div>',
+     'stroke-width="1.4" style="position:absolute;left:10px;top:11px"><circle cx="6.8" cy="6.8" r="4.3"></circle><line x1="10" y1="10" x2="13.5" y2="13.5"></line></svg>\n'
+     '          <sc-if value="{{ searchOpen }}">\n'
+     '            <div class="card elev-lg dc-search-panel" style="position:absolute;top:42px;left:0;width:330px;z-index:60;padding:6px;gap:0">\n'
+     '              <sc-for list="{{ searchResults }}" as="sr" hint-placeholder-count="4">\n'
+     '                <div class="dc-search-row" style="{{ sr.style }}" onClick="{{ sr.onClick }}">\n'
+     '                  <div style="font-size:13px">{{ sr.label }}</div>\n'
+     '                  <div style="font-size:11px;color:var(--color-neutral-500)">{{ sr.sub }}</div>\n'
+     '                </div>\n'
+     '              </sc-for>\n'
+     '              <sc-if value="{{ searchEmpty }}">\n'
+     '                <div style="padding:10px 12px;font-size:12px;color:var(--color-neutral-500)">{{ searchEmptyLabel }}</div>\n'
+     '              </sc-if>\n'
+     '            </div>\n'
+     '          </sc-if>\n'
+     '        </div>'),
+    # Header bell: a notifications panel built from the records already on the page — waiting
+    # callbacks, questions to review, the latest scan, stale data. Each row navigates to its screen.
+    ('<button class="btn btn-secondary btn-icon"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.8c-2 0-3.5 1.6-3.5 3.6v2.3c0 .6-.2 1.2-.6 1.7l-.5.7c-.3.4 0 1 .5 1h8.2c.5 0 .8-.6.5-1l-.5-.7c-.4-.5-.6-1.1-.6-1.7V5.4c0-2-1.5-3.6-3.5-3.6z"></path><path d="M6.3 13.2a1.7 1.7 0 0 0 3.4 0"></path></svg></button>',
+     '<div class="dc-bell" style="position:relative;flex:none">\n'
+     '          <button class="btn btn-secondary btn-icon" onClick="{{ toggleNotifications }}" title="{{ notifTitle }}"><svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 1.8c-2 0-3.5 1.6-3.5 3.6v2.3c0 .6-.2 1.2-.6 1.7l-.5.7c-.3.4 0 1 .5 1h8.2c.5 0 .8-.6.5-1l-.5-.7c-.4-.5-.6-1.1-.6-1.7V5.4c0-2-1.5-3.6-3.5-3.6z"></path><path d="M6.3 13.2a1.7 1.7 0 0 0 3.4 0"></path></svg></button>\n'
+     '          <span style="{{ notifBadgeStyle }}">{{ notifBadgeCount }}</span>\n'
+     '          <sc-if value="{{ notificationsOpen }}">\n'
+     '            <div class="card elev-lg dc-notif-panel" style="position:absolute;top:44px;right:0;width:330px;z-index:60;padding:6px;gap:0">\n'
+     '              <div style="padding:8px 12px 6px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500)">{{ notifHeading }}</div>\n'
+     '              <sc-for list="{{ notifications }}" as="nt" hint-placeholder-count="3">\n'
+     '                <div class="dc-search-row" style="{{ nt.style }}" onClick="{{ nt.onClick }}">\n'
+     '                  <div style="font-size:13px"><span style="{{ nt.dotStyle }}"></span>{{ nt.title }}</div>\n'
+     '                  <div style="font-size:11px;color:var(--color-neutral-500)">{{ nt.sub }}</div>\n'
+     '                </div>\n'
+     '              </sc-for>\n'
+     '              <sc-if value="{{ notifEmpty }}">\n'
+     '                <div style="padding:10px 12px;font-size:12px;color:var(--color-neutral-500)">{{ notifEmptyLabel }}</div>\n'
+     '              </sc-if>\n'
+     '            </div>\n'
+     '          </sc-if>\n'
+     '        </div>'),
+    # Collapsed sidebar: the mascot is the only branding left at 64px wide, so give it room.
+    ('<img src="assets/uncle-tony-mascot.svg" style="height:36px;width:auto;flex:none">',
+     '<img src="assets/uncle-tony-mascot.svg" style="height:52px;width:auto;flex:none;margin:0 auto;display:block">'),
     # Chat bubbles (both agents) gain a mascot and an animated ellipsis, used only while a turn is
     # still in flight — see the thinking states in bridge.js. Per-row bindings, so the bridge decides
     # which rows show them.

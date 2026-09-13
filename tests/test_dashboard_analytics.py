@@ -133,6 +133,24 @@ def test_daily_series_covers_seven_local_days_ending_today():
     assert series["days"] == 7 and all(series["labels"])  # 7 points: every label is printed
 
 
+def test_custom_period_is_the_picked_range_not_another_thirty_days():
+    """The Analytics calendar sends real dates. Both ends are the owner's local days and inclusive,
+    and the window never runs past now."""
+    start, end = dt.date(2026, 9, 7), dt.date(2026, 9, 9)
+    period = an.period_for("custom", NOW, SETTINGS, start_date=start, end_date=end)
+    local_start = period.start.astimezone(SETTINGS.tz)
+    local_end = period.end.astimezone(SETTINGS.tz)
+    assert local_start.date() == start and local_start.hour == 0
+    assert local_end.date() == end + dt.timedelta(days=1) and local_end.hour == 0  # end day included
+    assert period.label == "7–9 Sep" and period.key == "custom"
+    # backwards is the same window, and a single day is a whole day
+    assert an.period_for("custom", NOW, SETTINGS, start_date=end, end_date=start).start == period.start
+    one = an.period_for("custom", NOW, SETTINGS, start_date=start, end_date=start)
+    assert (one.end - one.start) == dt.timedelta(days=1)
+    # no dates at all still means the old fallback
+    assert an.period_for("custom", NOW, SETTINGS).label == "last 30 days"
+
+
 def test_daily_series_thins_its_labels_at_thirty_days():
     """One x-label per point is unreadable at 30 days, so only every fifth plus today is kept."""
     series = an.daily_series(snapshot(), SETTINGS, now=NOW, days=30)

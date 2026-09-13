@@ -136,7 +136,12 @@ def run_paid_scan(deps: ScanDeps) -> ScanOutcome:
             live_calls += 1
             spent += result.credits_charged
         sources.append(call.endpoint_key)
-        packets.extend(normalize_response(endpoint.platform, result.body, source=call.endpoint_key, scraped_at=now))
+        got = normalize_response(endpoint.platform, result.body, source=call.endpoint_key, scraped_at=now)
+        if not got and result.body:
+            # the call was paid for and answered, but nothing in it parsed — the envelope shape is
+            # the prime suspect (CLAUDE.md), and this is the line that says so in the scan log
+            log.warning("scan call %s returned a body with no recognisable posts", call.endpoint_key)
+        packets.extend(got)
 
     free_packets, free_sources, trends, free_statuses = _run_free_sources(deps, context)
     packets.extend(free_packets)

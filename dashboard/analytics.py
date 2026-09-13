@@ -47,10 +47,20 @@ class Period:
         return moment is not None and self.start <= moment < self.end
 
 
-def period_for(key: str, now: dt.datetime, settings: DashboardSettings) -> Period:
+def period_for(key: str, now: dt.datetime, settings: DashboardSettings, *,
+               start_date: dt.date | None = None, end_date: dt.date | None = None) -> Period:
     key = key if key in PERIODS else "today"
     local_now = now.astimezone(settings.tz)
     midnight = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if key == "custom" and start_date is not None:
+        # the picker's dates are the owner's local days, inclusive at both ends
+        end_date = end_date or start_date
+        if end_date < start_date:
+            start_date, end_date = end_date, start_date
+        start = dt.datetime.combine(start_date, dt.time.min, tzinfo=settings.tz)
+        end = dt.datetime.combine(end_date, dt.time.min, tzinfo=settings.tz) + dt.timedelta(days=1)
+        return Period(key, start.astimezone(dt.timezone.utc), min(end.astimezone(dt.timezone.utc), now),
+                      custom_label(start_date, end_date))
     if key == "today":
         start = midnight
     elif key == "week":
@@ -58,6 +68,22 @@ def period_for(key: str, now: dt.datetime, settings: DashboardSettings) -> Perio
     else:
         start = midnight - dt.timedelta(days=29)
     return Period(key, start.astimezone(dt.timezone.utc), now, PERIODS[key])
+
+
+def custom_label(start: dt.date, end: dt.date) -> str:
+    if start == end:
+        return start.strftime("%-d %b") if _dash_ok() else start.strftime("%d %b").lstrip("0")
+    same_month = (start.year, start.month) == (end.year, end.month)
+    left = str(start.day) if same_month else f"{start.day} {start:%b}"
+    return f"{left}–{end.day} {end:%b}"
+
+
+def _dash_ok() -> bool:
+    try:
+        dt.date(2026, 1, 5).strftime("%-d")
+    except ValueError:  # Windows strftime has no %-d
+        return False
+    return True
 
 
 # ---- classification helpers ----------------------------------------------------------------------
@@ -188,8 +214,9 @@ def group_gaps(calls: list[CallRecord], reviews: dict[str, ReviewRecord]) -> lis
     return sorted(groups.values(), key=lambda g: (g.review is not None, -g.evidence, -g.last_asked.timestamp()))
 
 
-def compute(snapshot: Snapshot, settings: DashboardSettings, *, period_key: str, now: dt.datetime) -> dict[str, Any]:
-    period = period_for(period_key, now, settings)
+def compute(snapshot: Snapshot, settings: DashboardSettings, *, period_key: str, now: dt.datetime,
+            start_date: dt.date | None = None, end_date: dt.date | None = None) -> dict[str, Any]:
+    period = period_for(period_key, now, settings, start_date=start_date, end_date=end_date)
     previous = period.previous()
     callbacks_by_call: dict[str, list[CallbackRecord]] = defaultdict(list)
     for cb in snapshot.callbacks:
