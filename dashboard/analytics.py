@@ -301,8 +301,12 @@ def daily_series(snapshot: Snapshot, settings: DashboardSettings, *, now: dt.dat
     today = local_now.date()
     counts = Counter(c.started_at.astimezone(settings.tz).date() for c in snapshot.calls)
     dates = [today - dt.timedelta(days=offset) for offset in range(days - 1, -1, -1)]
+    labels = [("Today" if d == today else "Yesterday" if (today - d).days == 1 else f"{(today - d).days}d ago") for d in dates]
+    if days > 10:
+        # one label per point is unreadable at 30 days: keep every fifth, plus today
+        labels = [lbl if i % 5 == 0 or i == len(dates) - 1 else "" for i, lbl in enumerate(labels)]
     return {"values": [counts.get(d, 0) for d in dates], "dates": [d.strftime("%a, %b ") + str(d.day) for d in dates],
-            "labels": [("Today" if d == today else "Yesterday" if (today - d).days == 1 else f"{(today - d).days}d ago") for d in dates]}
+            "labels": labels, "days": days}
 
 
 def _previous_label(key: str) -> str:

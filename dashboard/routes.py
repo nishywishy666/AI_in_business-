@@ -7,6 +7,7 @@
     POST /api/dashboard/gaps/{key}/review          {status: approved|dismissed, answer?}
     POST /api/dashboard/settings                   {notifPrefs?, packetConfirmed?}
     GET  /api/dashboard/trends                     UI-shaped trend cards
+    POST /api/dashboard/trends/refresh             re-read the brief now, bypassing the daily cache
     POST /api/dashboard/trends/{post_id}/save      Like if needed → angle 0 → saved script
     POST /api/overlord/ask                         {question}
     GET|POST /api/jobs/{name}                      Vercel Cron targets (Bearer CRON_SECRET)
@@ -63,6 +64,7 @@ class DashboardContext:
         trends = self.marketing.trends()
         setup = present.setup_payload(self.reader, self.business_id, self.settings, now=now)
         chart = an.daily_series(snapshot, self.settings, now=now)
+        chart30 = an.daily_series(snapshot, self.settings, now=now, days=30)  # the 7D/30D toggle's other half
         gaps = present.gap_rows(raw, self.settings, now=now)
         open_callbacks = [c for c in snapshot.callbacks if c.status not in ("done", "cancelled")]
         top_gap = gaps[0] if gaps else None
@@ -85,7 +87,7 @@ class DashboardContext:
                          "source": snapshot.source, "demo": snapshot.has_demo_calls},
             "period": raw["period"],
             "analytics": present.analytics_payload(raw, self.settings, now=now),
-            "overview": {"kpis": present.kpis(raw_today), "chart": chart, "routeMix": present.route_mix(raw_today),
+            "overview": {"kpis": present.kpis(raw_today), "chart": chart, "chart30": chart30, "routeMix": present.route_mix(raw_today),
                          "quickActions": quick_actions,
                          "callLogCountLabel": f"calls on record · {self.settings.business_timezone}"},
             "calls": present.calls_payload(snapshot, self.settings, now=now),
@@ -165,6 +167,12 @@ def build_router(ctx: DashboardContext) -> APIRouter:
     @router.get("/api/dashboard/trends")
     def trends() -> JSONResponse:
         return JSONResponse(ctx.marketing.trends())
+
+    @router.post("/api/dashboard/trends/refresh")
+    def refresh_trends() -> JSONResponse:
+        """"Refresh now" on the Marketing screen: rebuild the marketing deps and re-read Firestore
+        instead of the once-a-day local cache. A read only — no scrape, no credit spent."""
+        return JSONResponse(ctx.marketing.trends(force=True))
 
     @router.post("/api/dashboard/trends/{post_id}/save")
     def save_trend(post_id: str) -> JSONResponse:

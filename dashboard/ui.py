@@ -45,6 +45,43 @@ PATCHES: list[tuple[str, str]] = [
      '<div style="font-size:11px;color:var(--color-neutral-400);white-space:nowrap;flex:1">{{ businessLocation }}</div>'),
     ('<span class="tag tag-outline" style="white-space:nowrap;flex:none">Live prototype</span>',
      '<span class="tag tag-outline" style="white-space:nowrap;flex:none">{{ headerBadge }}</span>'),
+    # Marketing: a "Refresh now" button beside the trend count, so an empty or still-loading trend
+    # list has a manual way out (the bridge otherwise only polls every 60s).
+    ('<div style="margin-bottom:14px">\n              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>\n            </div>',
+     '<div style="margin-bottom:14px;display:flex;align-items:center;gap:10px">\n'
+     '              <span style="font-size:11px;color:var(--color-neutral-500);white-space:nowrap">{{ trendCountLabel }}</span>\n'
+     '              <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="Re-read the latest trend scan now">{{ refreshTrendsLabel }}</button>\n'
+     '            </div>'),
+    # Sidebar: the caret next to the business name becomes a profile glyph — it opens a profile menu,
+    # so it should read as "you", not as "sort". Same 16-box stroke icons the platform filters use.
+    ('<span style="color:var(--color-neutral-400);font-size:10px;flex:none">{{ profileChevron }}</span>',
+     '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.4"'
+     ' style="color:var(--color-neutral-400);flex:none" aria-label="Profile menu">'
+     '<circle cx="8" cy="5.6" r="2.7"/><path d="M2.9 13.7c.6-2.7 2.6-4.1 5.1-4.1s4.5 1.4 5.1 4.1"/></svg>'),
+    # Overview: the 7D/30D switch is hard-coded to 7D in the export (readOnly, and 30D has no binding
+    # at all). Bind both halves, and make the footer's comparison follow the chosen range.
+    ('<label class="seg-opt"><input type="radio" checked="{{ true }}" readOnly="{{ true }}">7D</label>\n'
+     '                  <label class="seg-opt"><input type="radio">30D</label>',
+     '<label class="seg-opt"><input type="radio" checked="{{ chartRange7 }}" onChange="{{ setChartRange7 }}">7D</label>\n'
+     '                  <label class="seg-opt"><input type="radio" checked="{{ chartRange30 }}" onChange="{{ setChartRange30 }}">30D</label>'),
+    ('<span style="color:var(--color-accent-400)">↑ {{ chartDeltaPct }}%</span> vs first day in last 7 days</div>',
+     '<span style="color:var(--color-accent-400)">{{ chartDeltaArrow }} {{ chartDeltaPct }}%</span> {{ chartDeltaLabel }}</div>'),
+    # Overlord: the export gives the panel canned quick questions but no way to type. Same input row
+    # the Marketing chat uses, bound to the bridge's /api/overlord/ask call.
+    ('        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">\n'
+     '          <sc-for list="{{ overlordQuickQuestions }}" as="q" hint-placeholder-count="3">\n'
+     '            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onClick="{{ q.onClick }}">{{ q.label }}</button>\n'
+     '          </sc-for>\n'
+     '        </div>',
+     '        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">\n'
+     '          <sc-for list="{{ overlordQuickQuestions }}" as="q" hint-placeholder-count="3">\n'
+     '            <button class="btn btn-secondary" style="font-size:11px;padding:4px 8px" onClick="{{ q.onClick }}">{{ q.label }}</button>\n'
+     '          </sc-for>\n'
+     '        </div>\n'
+     '        <div style="display:flex;gap:6px">\n'
+     '          <input class="input" placeholder="{{ overlordPlaceholder }}" value="{{ overlordDraft }}" onInput="{{ setOverlordDraft }}" onKeyDown="{{ overlordKeyDown }}">\n'
+     '          <button class="btn btn-primary btn-icon" onClick="{{ sendOverlord }}">→</button>\n'
+     '        </div>'),
 ]
 
 

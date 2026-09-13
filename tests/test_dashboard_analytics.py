@@ -130,3 +130,13 @@ def test_daily_series_covers_seven_local_days_ending_today():
     series = an.daily_series(snapshot(), SETTINGS, now=NOW)
     assert len(series["values"]) == 7 and series["labels"][-1] == "Today" and series["labels"][-2] == "Yesterday"
     assert series["values"][-1] == 6 and series["values"][-2] == 1 and series["dates"][-1] == "Thu, Sep 10"
+    assert series["days"] == 7 and all(series["labels"])  # 7 points: every label is printed
+
+
+def test_daily_series_thins_its_labels_at_thirty_days():
+    """One x-label per point is unreadable at 30 days, so only every fifth plus today is kept."""
+    series = an.daily_series(snapshot(), SETTINGS, now=NOW, days=30)
+    assert len(series["values"]) == len(series["labels"]) == 30 and series["days"] == 30
+    assert [i for i, lbl in enumerate(series["labels"]) if lbl] == [0, 5, 10, 15, 20, 25, 29]
+    assert series["labels"][-1] == "Today" and series["labels"][0] == "29d ago"
+    assert series["values"][-7:] == an.daily_series(snapshot(), SETTINGS, now=NOW)["values"]
