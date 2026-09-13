@@ -74,7 +74,7 @@
       // particles the component ships were dropped: drifting dots over a KPI card read as dirt.
       ":root{--dc-glow:31,74,69}" +
       ".dc-bento{position:relative;overflow:hidden;--dc-glow-x:50%;--dc-glow-y:50%;--dc-glow-intensity:0;" +
-      "--dc-glow-radius:220px;transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .3s ease}" +
+      "--dc-glow-radius:130px;transition:transform .28s cubic-bezier(.22,1,.36,1),box-shadow .3s ease}" +
       ".dc-bento:hover{box-shadow:0 6px 22px rgba(var(--dc-glow),.16),0 0 26px rgba(var(--dc-glow),.06)}" +
       // the glow is a ring: a radial gradient masked down to the padding box's edge
       ".dc-bento::after{content:'';position:absolute;inset:0;padding:2px;border-radius:inherit;pointer-events:none;" +
@@ -98,7 +98,7 @@
       ":root{--font-heading:'Outfit',system-ui,sans-serif !important;--font-body:'Outfit',system-ui,sans-serif !important;" +
       "--font-heading-weight:856 !important}" +
       "body,button,input,select,textarea,table{font-family:'Outfit',system-ui,sans-serif}" +
-      "body{font-weight:577}" +
+      "body{font-weight:577 !important}" +
       // the export sets Archivo + a width axis on headings; Outfit has neither
       "h1,h2,h3,h4,h5,h6{font-family:'Outfit',system-ui,sans-serif !important;font-weight:856 !important;" +
       "font-stretch:normal !important}" +
@@ -106,14 +106,24 @@
       // The light tier is 360, not the 267 it started at: on a cream ground the thinner stroke
       // disappeared at 11px. The muted colours it rides on are lifted for the same reason —
       // neutral-400/500 are pale tans that sit near 2:1 against the background.
-      ".card-body,.card-meta,.card-kicker,.dialog-body,small,figcaption{font-weight:360 !important}" +
-      ".card-body{opacity:.92}" +
-      ".card-meta{color:color-mix(in srgb,var(--color-text) 74%,transparent)}" +
-      "::placeholder{font-weight:360;color:var(--color-neutral-600)}" +
-      // muted colour is this design's marker for a caption or a secondary line
-      "[style*='color: var(--color-neutral-400)'],[style*='color: var(--color-neutral-500)']," +
-      "[style*='color:var(--color-neutral-400)'],[style*='color:var(--color-neutral-500)']" +
-      "{font-weight:360;color:var(--color-neutral-600) !important}" +
+      ".card-body,.card-meta,.card-kicker,.dialog-body,small,figcaption{font-weight:400 !important}" +
+      ".card-body{opacity:.94 !important}" +
+      // !important because support.js injects the design system's own stylesheet after this one, so
+      // .card-meta's 50% mix (2.5:1 on cream — barely there) otherwise wins on document order
+      ".card-meta{color:color-mix(in srgb,var(--color-text) 85%,transparent) !important}" +
+      "::placeholder{font-weight:400;color:var(--color-neutral-600)}" +
+      // Muted colour is this design's marker for a caption or a secondary line. Anchored to the start
+      // of a declaration — a bare [style*='color: …'] also matches `border-color: …`, which is how the
+      // sidebar's Collapse button ended up with its label recoloured.
+      "[style^='color: var(--color-neutral-400)'],[style*='; color: var(--color-neutral-400)']," +
+      "[style^='color: var(--color-neutral-500)'],[style*='; color: var(--color-neutral-500)']," +
+      "[style^='color:var(--color-neutral-400)'],[style*=';color:var(--color-neutral-400)']," +
+      "[style^='color:var(--color-neutral-500)'],[style*=';color:var(--color-neutral-500)']" +
+      "{font-weight:400 !important;color:var(--color-neutral-700) !important}" +
+      // ...and none of that darkening applies on the sidebar, which is the accent green
+      ".dc-sidebar [style*='var(--color-neutral-400)'],.dc-sidebar [style*='var(--color-neutral-500)']" +
+      "{color:rgba(255,255,255,.78) !important}" +
+      ".dc-sidebar .btn{color:#fff !important}" +
       ".btn,.tag,.seg-opt,th{font-weight:577 !important}" +
       // last, so a weight the design stated explicitly wins over the rules above
       "[style*='font-weight: 400'],[style*='font-weight:400']{font-weight:577 !important}" +
@@ -142,6 +152,14 @@
       "svg[width='18'][height='18']{width:22px;height:22px}" +
       "button:has(> svg[width='18']){transition:transform .18s cubic-bezier(.22,1,.36,1)}" +
       "button:has(> svg[width='18']):hover{transform:translateY(-1px) scale(1.08)}" +
+      // Marketing fits the viewport, so the page itself does not scroll — only the trend column does.
+      // The chain below is all one idea: every ancestor of the scrolling column has to give up its
+      // own height and its min-height:auto, or the column grows instead of scrolling.
+      ".scrollpane.dc-fit{overflow:hidden !important;padding-bottom:28px !important;min-height:0}" +
+      ".scrollpane.dc-fit > div{height:100%;min-height:0;align-items:stretch !important}" +
+      ".scrollpane.dc-fit .mkt-scroll{max-height:none !important;height:100%;min-height:0;overflow-y:auto}" +
+      ".scrollpane.dc-fit .dc-chat-row{flex:1 1 auto;min-height:0}" +
+      ".scrollpane.dc-fit .mkt-chat{height:auto !important;min-height:0}" +
       "@keyframes dc-screen-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}" +
       ".scrollpane.dc-screen-in{animation:dc-screen-in .34s cubic-bezier(.22,1,.36,1) both}" +
       "@media (prefers-reduced-motion:reduce){.dc-sidebar-nav.dc-nav-ready::before{transition:none}" +
@@ -372,15 +390,23 @@
     this.__onResize = function () { self.__placeNavPill(); };
     if (typeof window !== "undefined") window.addEventListener("resize", this.__onResize);
     this.__placeNavPill();
+    this.__markScreen();
     this.__initBento();
     this.__initSparks();
   };
   P.componentDidUpdate = function () {
     if (origDidUpdate) { try { origDidUpdate.apply(this, arguments); } catch (e) { console.error(e); } }
     this.__placeNavPill();
+    this.__markScreen();
   };
   // Measure the active nav item and hand its box to the sliding highlight. Reads the item's own
   // inline style, because the export gives the nav items no class — only the active one is painted.
+  // Marketing is the one screen that fits: it owns its own scrolling column, so the page behind it
+  // should not scroll too.
+  P.__markScreen = function () {
+    var pane = typeof document !== "undefined" && document.querySelector(".scrollpane:not(.mkt-scroll)");
+    if (pane) pane.classList.toggle("dc-fit", this.state.screen === "marketing");
+  };
   P.__placeNavPill = function () {
     var nav = typeof document !== "undefined" && document.querySelector(".dc-sidebar-nav");
     if (!nav) return;
@@ -710,7 +736,14 @@
   // Every tiled card on every screen. The two big marketing panels are excluded: tilting a card you
   // are typing into is not a feature.
   var BENTO_SELECTOR = ".card.elev-sm:not(.mkt-chat):not(.dc-mkt-stats):not(.dc-no-bento)";
-  var SPOT_RADIUS = 340, MOBILE_BREAKPOINT = 768;
+  // SPOT_RADIUS is how far from a card the cursor still lights it (and how the spotlight fades);
+  // GLOW_RADIUS is the size of the lit patch on the card itself. They were one number, which made
+  // the glow span the whole card instead of tracking the cursor along its edge.
+  var SPOT_RADIUS = 340, GLOW_RADIUS = 130, MOBILE_BREAKPOINT = 768;
+  // Only a tile tilts. Anything wider than this is a panel of label/value rows — the research packet,
+  // the profile card, quick actions — and tilting a list you read across is disorienting even when it
+  // is built from divs rather than a <table>. Measured per frame, so it follows the layout.
+  var TILT_MAX_WIDTH = 360;
   function bentoOff() {
     return (typeof window !== "undefined" && window.innerWidth <= MOBILE_BREAKPOINT) || reducedMotion();
   }
@@ -755,10 +788,10 @@
       card.style.setProperty("--dc-glow-x", ((at.x - rect.left) / rect.width * 100) + "%");
       card.style.setProperty("--dc-glow-y", ((at.y - rect.top) / rect.height * 100) + "%");
       card.style.setProperty("--dc-glow-intensity", String(glow));
-      card.style.setProperty("--dc-glow-radius", SPOT_RADIUS + "px");
+      card.style.setProperty("--dc-glow-radius", GLOW_RADIUS + "px");
       var inside = at.x >= rect.left && at.x <= rect.right && at.y >= rect.top && at.y <= rect.bottom;
-      if (card.classList.contains("dc-no-tilt")) {
-        if (card.style.transform) card.style.transform = "";  // in case it was tagged mid-hover
+      if (card.classList.contains("dc-no-tilt") || rect.width > TILT_MAX_WIDTH) {
+        if (card.style.transform) card.style.transform = "";  // in case it was tagged or resized mid-hover
         continue;  // glow and ripple still apply; tilt and magnetism do not
       }
       if (inside) {
@@ -844,6 +877,15 @@
   // The small line above each chat: which free model is answering and what is left. Both chats are
   // Gemini free tier — the marketing agent through the ladder in marketing_radar, the Overlord
   // through its own transport — so one line serves both.
+  // Anything that spends a Gemini call re-reads the counters, rather than leaving the line to the
+  // 60s poll: the number under a chat is only worth showing if it moves when you use it.
+  P.__refreshAi = function () {
+    var self = this, live = this.__live;
+    if (!live || !live.data) return;
+    return api("/api/dashboard/ai").then(function (ai) {
+      if (live.data) { live.data.ai = ai; self.setState({}); }
+    }).catch(function (e) { console.error("[dashboard] ai status", e); });
+  };
   P.__aiLine = function (vals) {
     var live = this.__live, ai = (live && live.data && live.data.ai) || null;
     var tone = "background:#3a7a4a";  // a model is answering
@@ -980,6 +1022,7 @@
       var open = ((self.state.marketingChat || []).concat(self.state.overlordThread || []))
         .some(function (m) { return m.pending; });
       self.__stopThinking(open);
+      self.__refreshAi();
     });
   };
   // What the agents can honestly answer from right now. Asking before the data is in produced
@@ -1072,7 +1115,7 @@
     }).catch(function (e) {
       live.angles[id] = { title: card ? card.title : id, angles: [], guide: "Could not generate angles: " + errText(e) };
       if (onError) onError(e);
-    }).then(function () { delete live.pending[id]; self.setState({}); });
+    }).then(function () { delete live.pending[id]; self.setState({}); self.__refreshAi(); });
   };
   P.likeTrend = function (id) {
     var self = this;
@@ -1094,6 +1137,7 @@
     this.setState(function (s) { return { savedTrends: Object.assign({}, s.savedTrends, (function (o) { o[id] = true; return o; })({})) }; });
     post("/api/dashboard/trends/" + encodeURIComponent(id) + "/save").then(function () {
       self.setState(function (s) { return { likedTrends: Object.assign({}, s.likedTrends, (function (o) { o[id] = true; return o; })({})) }; });
+      self.__refreshAi();
     }).catch(function (e) {
       self.setState(function (s) { var m = Object.assign({}, s.savedTrends); delete m[id]; return { savedTrends: m }; });
       alert("Could not save this trend: " + errText(e));

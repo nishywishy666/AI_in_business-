@@ -117,10 +117,16 @@ One rAF-throttled `mousemove` drives all of it, and it measures every card's rec
 any of them — interleaving reads and writes forces a layout per card per frame. `textAutoHide` was
 deliberately not ported: these cards carry real data, and line-clamping would hide it.
 
-Two opt-outs: the marketing chat and stats panels (tilting a card you are typing into is not a
-feature), and any card painting its own inline background — which is how the dark Call volume card is
-recognised, whose hover tooltip is drawn outside its own box and would be clipped by the
-`overflow:hidden` the particles and ripple need.
+Only a **tile** tilts: a card wider than `TILT_MAX_WIDTH` (360px) keeps the glow and the ripple but
+never moves. That is what separates the KPI and trend cards from the panels of label/value rows — the
+research packet, the profile card, quick actions, the call log — where tilting a list you read across
+is disorienting. Width is measured each frame, so it follows the layout rather than a list of
+exceptions, and it catches row panels built from divs as well as real `<table>`s.
+
+Two further opt-outs: the marketing chat and stats panels (tilting a card you are typing into is not
+a feature), and any card painting its own inline background — which is how the dark Call volume card
+is recognised, whose hover tooltip is drawn outside its own box and would be clipped by the
+`overflow:hidden` the ripple needs.
 
 **ClickSpark** is one fixed canvas over the app, eight accent-green lines radiating from each click,
 with the component's own ease-out curve. It draws only while sparks are alive rather than holding a
@@ -162,7 +168,9 @@ Both chats are Gemini free tier, so one line serves both: the marketing agent go
 `marketing_radar`'s ladder, and the Overlord through its own transport with its own resolved model.
 `MarketingHub.ai_status()` reads the usage snapshot and is deliberately best effort — it returns the
 empty shape rather than raising, because a chat that still works must not be blocked by the line that
-describes it. It rides on the bootstrap, with `GET /api/dashboard/ai` for a direct read.
+describes it. It rides on the bootstrap, and `GET /api/dashboard/ai` re-reads it after anything that spends a
+Gemini call — a settled turn in either chat, a trend's angles, a saved script — rather than leaving
+it to the 60-second poll. A number under a chat is only worth showing if it moves when you use it.
 
 Clicking anywhere outside the Overlord closes it, through the same animated path as the profile menu:
 the panel and the mascot that opens it share one fixed parent, so "outside" is anything not inside
