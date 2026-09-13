@@ -67,7 +67,7 @@ class GenAiTransport:
         except errors.APIError as exc:
             code = getattr(exc, "code", None) or getattr(exc, "status_code", None)
             if code == 429:
-                raise RateLimited(str(exc), daily=not _is_short_window(exc), retry_after=_retry_after(exc)) from exc
+                raise RateLimited(str(exc), daily=_is_daily_quota(exc), retry_after=_retry_after(exc)) from exc
             if code in (403, 404):
                 raise ModelUnavailable(str(exc)) from exc
             raise
@@ -76,13 +76,15 @@ class GenAiTransport:
         return GeminiRaw(text=response.text or "", tokens=tokens)
 
 
-def _is_short_window(exc: Exception) -> bool:
-    """Google names the violated quota in the 429 body. A per-minute one (e.g.
-    `GenerateRequestsPerMinutePerProjectPerModel`) is over in seconds, so parking the model for the
-    rest of the Pacific day — which used to burn every free rung in one burst — is wrong. Anything
-    we can't positively identify as short is still treated as the day's quota, per spec §12.1."""
+def _is_daily_quota(exc: Exception) -> bool:
+    """Is this 429 really today's quota, or just the per-minute rate limit?
+
+    Only a body that names a per-day quota (`GenerateRequestsPerDayPerProjectPerModel`,
+    "daily limit") retires the model until the Pacific reset. Everything else — including a 429 that
+    names no quota at all, which is most of them — is treated as a short wait, because the cost of
+    guessing wrong the other way is the whole free ladder going dark for the rest of the day."""
     text = str(exc).lower().replace("_", "").replace(" ", "")
-    return any(marker in text for marker in ("perminute", "persecond", "perhour", "rpm"))
+    return any(marker in text for marker in ("perday", "dailylimit", "perdayperproject"))
 
 
 def _retry_after(exc: Exception) -> float:
@@ -175,7 +177,7 @@ class GeminiLadder:
                 out.append(RungStatus(rung, rung.ids[0], 0, 0, True, unavailable=True))
                 continue
             used = daily.used.get(model_id, 0)
-            spent = model_id in daily.exhausted or _cooling(daily, model_id, at)
+            spent = _cooling(daily, model_id, at) or used >= rung.daily_cap
             out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), spent))
         return out
 
@@ -199,19 +201,25 @@ class GeminiLadder:
             for model_id in rung.ids:
                 if model_id in daily.unavailable:
                     continue
-                if model_id in daily.exhausted or daily.used.get(model_id, 0) >= rung.daily_cap:
-                    break  # this rung is spent for today; step down once
+                if daily.used.get(model_id, 0) >= rung.daily_cap:
+                    break  # this rung's own budget is spent for today; step down once
                 if _cooling(daily, model_id, now):
-                    break  # rate-limited a moment ago; step down rather than wait
+                    break  # rate-limited or out of quota, with time still on the clock; step down
+                # A model left in `exhausted` with no cooldown beside it is state from the build that
+                # retired models for the whole Pacific day with no way back. Probe it once rather than
+                # inherit a dead ladder: if it really is spent, the 429 writes a proper wait this time.
                 try:
                     raw = self.transport.generate(model_id, system=system, prompt=prompt, json_mode=json_mode)
                 except RateLimited as exc:
-                    # a per-minute 429 only parks the model for a moment; only the daily quota retires it
+                    # a per-minute 429 only parks the model for a moment; only the daily quota retires
+                    # it. Either way the wait is written as a cooldown, so nothing is ever blocked
+                    # without a recorded reason to be (see the re-probe in the skip rules above).
                     if getattr(exc, "daily", False):
                         daily.exhausted.append(model_id)
+                        until = self.resets_at(now)
                     else:
-                        wait = getattr(exc, "retry_after", 60.0)
-                        daily.cooldown_until[model_id] = (now + dt.timedelta(seconds=wait)).isoformat()
+                        until = now + dt.timedelta(seconds=getattr(exc, "retry_after", 60.0))
+                    daily.cooldown_until[model_id] = until.isoformat()
                     self._save_daily(daily)
                     break
                 except ModelUnavailable:
@@ -282,7 +290,7 @@ def rung_statuses_from_daily(settings: Settings, daily: GeminiDaily, *, now: dt.
             out.append(RungStatus(rung, rung.ids[0], 0, 0, True, unavailable=True))
             continue
         used = daily.used.get(model_id, 0)
-        spent = model_id in daily.exhausted or (now is not None and _cooling(daily, model_id, now))
+        spent = (_cooling(daily, model_id, now) if now is not None else model_id in daily.exhausted)             or used >= rung.daily_cap
         out.append(RungStatus(rung, model_id, used, max(0, rung.daily_cap - used), spent))
     return out
 

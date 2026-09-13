@@ -112,6 +112,26 @@ def test_every_scan_fixture_normalizes(client, clock, key, expected_platform, mi
         assert p.published_at is not None and p.hook
 
 
+def test_posts_are_found_inside_an_envelope_nobody_guessed(clock):
+    """The live ScrapeCreators envelopes were never recorded (CLAUDE.md), and a wrapper key we did
+    not guess used to normalise to zero posts — which is how a scan that really did call TikTok and
+    Instagram came back all-YouTube. The deep fallback finds the list wherever it is."""
+    body = {"status": "ok", "payload": {"page": 1, "collection": {"nodes": [
+        {"aweme_id": "7311", "desc": "60-second toastie #cheese", "statistics": {"digg_count": 900, "play_count": 41000},
+         "create_time": 1757000000, "author": {"unique_id": "tony"}},
+        {"aweme_id": "7312", "desc": "grill sizzle", "statistics": {"digg_count": 120, "play_count": 5000},
+         "create_time": 1757000500, "author": {"unique_id": "tony"}},
+    ]}}}
+    packets = normalize_response("tiktok", body, source="tiktok_trending", scraped_at=clock())
+    assert [p.provider_id for p in packets] == ["7311", "7312"]
+    assert all(p.platform == "tiktok" and p.post_id.startswith("tt_") for p in packets)
+
+
+def test_an_envelope_with_no_posts_still_normalises_to_nothing(clock):
+    body = {"status": "error", "meta": {"credits": 94}, "message": "no results"}
+    assert normalize_response("tiktok", body, source="tiktok_trending", scraped_at=clock()) == []
+
+
 def test_facebook_null_views_and_reaction_fallback(client, clock):
     packets = normalize_response("facebook", client.fetch("facebook_page_reels", {"url": "https://www.facebook.com/x"}).body,
                                  source="facebook_page_reels", scraped_at=clock())

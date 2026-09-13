@@ -16,8 +16,12 @@ HASHTAG_RE = re.compile(r"#([A-Za-z0-9_]+)")
 SENTENCE_SPLIT = re.compile(r"[.!?\n]")
 PLATFORM_SHORT = {"tiktok": "tt", "instagram": "ig", "youtube": "yt", "facebook": "fb", "reddit": "rd"}
 
-_LIST_KEYS = ("aweme_list", "search_item_list", "reels", "posts", "shorts", "videos", "items", "data",
-              "results", "medias", "media")
+_LIST_KEYS = ("aweme_list", "aweme_details", "search_item_list", "itemList", "item_list", "reels",
+              "posts", "shorts", "videos", "items", "data", "results", "medias", "media", "edges",
+              "entries", "content", "list", "feed", "records")
+# Keys that mark a dict as a post rather than a wrapper, for the deep fallback below.
+_POST_HINTS = ("id", "pk", "aweme_id", "video_id", "media_id", "shortcode", "code", "url", "permalink",
+               "share_url", "desc", "caption", "title", "text", "node")
 
 
 def normalize_response(platform: str, body: Any, *, source: str, scraped_at: dt.datetime) -> list[TrendPacket]:
@@ -182,12 +186,40 @@ def _items(body: Any) -> Iterable[dict]:
     for key in _LIST_KEYS:
         value = body.get(key)
         if isinstance(value, list):
-            return [x for x in value if isinstance(x, dict)]
+            rows = [x for x in value if isinstance(x, dict)]
+            if rows:
+                return rows
         if isinstance(value, dict):
             nested = _items(value)
             if nested:
                 return nested
-    return []
+    return _deep_items(body)
+
+
+def _deep_items(body: Any, depth: int = 0) -> list[dict]:
+    """Last resort, and the reason TikTok and Instagram could come back empty from a scan that did
+    call them: the live ScrapeCreators envelopes were never recorded (see CLAUDE.md), so a wrapper
+    key we did not guess used to mean zero posts. Walk the payload instead and take the largest list
+    of dicts that look like posts — a wrong guess scores badly, an empty scan shows nothing at all."""
+    if depth > 4:
+        return []
+    best: list[dict] = []
+    values = list(body.values()) if isinstance(body, dict) else (body if isinstance(body, list) else [])
+    for value in values:
+        if isinstance(value, list):
+            rows = [x for x in value if isinstance(x, dict) and _looks_like_post(x)]
+            if len(rows) > len(best):
+                best = rows
+        elif isinstance(value, dict):
+            nested = _deep_items(value, depth + 1)
+            if len(nested) > len(best):
+                best = nested
+    return best
+
+
+def _looks_like_post(row: dict) -> bool:
+    keys = {str(k).lower() for k in row}
+    return any(hint in keys for hint in _POST_HINTS)
 
 
 def pick(item: Any, *paths: str) -> Any:
