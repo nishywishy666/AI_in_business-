@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 95,
+  "search_item_list": [
+    {
+      "aweme_info": {
+        "aweme_id": "7403000000000000021",
+        "desc": "busy parents: this is your sign to do 10 squats right now #busyparents #homeworkout",
+        "create_time": 1757548800,
+        "share_url": "https://www.tiktok.com/@parentfit/video/7403000000000000021",
+        "author": {"unique_id": "parentfit"},
+        "statistics": {"digg_count": 15000, "comment_count": 400, "share_count": 2100, "play_count": 210000},
+        "video": {"duration": 12000},
+        "text_extra": [{"hashtag_name": "busyparents"}, {"hashtag_name": "homeworkout"}]
+      }
+    }
+  ]
+}

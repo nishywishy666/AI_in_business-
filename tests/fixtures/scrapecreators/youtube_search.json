@@ -1,0 +1,19 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 95,
+  "videos": [
+    {
+      "id": "ytSearch0001",
+      "title": "15 minute home workout for busy parents (no equipment)",
+      "description": "#homeworkout #busyparents",
+      "url": "https://www.youtube.com/watch?v=ytSearch0001",
+      "publishedAt": "2026-09-08T12:00:00Z",
+      "viewCount": 120000,
+      "likeCount": 5400,
+      "commentCount": 220,
+      "lengthSeconds": 900,
+      "channel": {"name": "Parent Fit"}
+    }
+  ]
+}

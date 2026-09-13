@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 95,
+  "shorts": [
+    {
+      "id": "yt7aB3cDeF1",
+      "title": "I tried 100 push-ups a day for 30 days #shorts",
+      "description": "no equipment challenge #homeworkout #pushups",
+      "url": "https://www.youtube.com/shorts/yt7aB3cDeF1",
+      "publishedAt": "2026-09-10T15:00:00Z",
+      "viewCount": 3100000,
+      "likeCount": 210000,
+      "commentCount": 3800,
+      "lengthSeconds": 41,
+      "channel": {"name": "Gym Bro Shorts"}
+    },
+    {
+      "id": "yt7aB3cDeF2",
+      "title": "Cat discovers the printer",
+      "description": "#cats #funny",
+      "url": "https://www.youtube.com/shorts/yt7aB3cDeF2",
+      "publishedAt": "2026-09-09T09:00:00Z",
+      "viewCount": 8800000,
+      "likeCount": 640000,
+      "commentCount": 9100,
+      "lengthSeconds": 18,
+      "channel": {"name": "Cat Clips"}
+    }
+  ]
+}

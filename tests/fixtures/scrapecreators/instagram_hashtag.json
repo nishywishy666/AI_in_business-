@@ -1,0 +1,43 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 96,
+  "posts": [
+    {
+      "id": "3451000000000000111",
+      "code": "C-def111",
+      "caption": {"text": "3 exercises you can do while the pasta boils #homeworkout #busyparents #kitchenworkout"},
+      "taken_at": 1757548800,
+      "user": {"username": "quickhomeworkouts"},
+      "like_count": 19000,
+      "comment_count": 380,
+      "reshare_count": 2600,
+      "play_count": 260000,
+      "video_duration": 22.0
+    },
+    {
+      "id": "3451000000000000112",
+      "code": "C-def112",
+      "caption": {"text": "Stop skipping workouts because you have kids. Do this instead. #busyparents #fitmom #homeworkout"},
+      "taken_at": 1757462400,
+      "user": {"username": "strongmama"},
+      "like_count": 33000,
+      "comment_count": 1100,
+      "reshare_count": 4800,
+      "play_count": 450000,
+      "video_duration": 40.0
+    },
+    {
+      "id": "3451000000000000113",
+      "code": "C-def113",
+      "caption": {"text": "Sunday reset routine #homeworkout"},
+      "taken_at": 1757376000,
+      "user": {"username": "resetwithrae"},
+      "like_count": 4000,
+      "comment_count": 60,
+      "reshare_count": 300,
+      "play_count": 52000,
+      "video_duration": 58.0
+    }
+  ]
+}

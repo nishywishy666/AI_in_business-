@@ -1,0 +1,44 @@
+{
+  "kind": "youtube#videoListResponse",
+  "items": [
+    {
+      "id": "ytfree00001",
+      "snippet": {
+        "publishedAt": "2026-09-10T08:00:00Z",
+        "channelId": "UC1",
+        "title": "15 min home workout for busy parents #homeworkout #shorts",
+        "description": "No equipment. #busyparents",
+        "channelTitle": "Parent Fit",
+        "thumbnails": {"high": {"url": "https://i.ytimg.com/vi/ytfree00001/hqdefault.jpg"}}
+      },
+      "statistics": {"viewCount": "410000", "likeCount": "22000", "commentCount": "540"},
+      "contentDetails": {"duration": "PT38S"}
+    },
+    {
+      "id": "ytfree00002",
+      "snippet": {
+        "publishedAt": "2026-09-09T18:30:00Z",
+        "channelId": "UC2",
+        "title": "Full 45 minute home workout follow along",
+        "description": "long form session",
+        "channelTitle": "Long Form Fitness",
+        "thumbnails": {"high": {"url": "https://i.ytimg.com/vi/ytfree00002/hqdefault.jpg"}}
+      },
+      "statistics": {"viewCount": "90000", "likeCount": "3100", "commentCount": "120"},
+      "contentDetails": {"duration": "PT45M12S"}
+    },
+    {
+      "id": "ytfree00003",
+      "snippet": {
+        "publishedAt": "2026-09-11T06:00:00Z",
+        "channelId": "UC3",
+        "title": "Dad does 100 squats while toddler naps #dadbod #homeworkout",
+        "description": "",
+        "channelTitle": "Dad Bod Reset",
+        "thumbnails": {"high": {"url": "https://i.ytimg.com/vi/ytfree00003/hqdefault.jpg"}}
+      },
+      "statistics": {"viewCount": "150000", "likeCount": "9800", "commentCount": "210"},
+      "contentDetails": {"duration": "PT27S"}
+    }
+  ]
+}

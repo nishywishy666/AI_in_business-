@@ -1,0 +1,18 @@
+{
+  "niche": "Home fitness for busy parents",
+  "keywords": ["home workout", "busy parents", "15 minute workout", "no equipment"],
+  "hashtags": ["#homeworkout", "busyparents", "#FitMom"],
+  "platforms": ["TikTok", "Instagram"],
+  "format": "talking head",
+  "region": "Australia",
+  "language": "en",
+  "goal": "grow followers",
+  "facebook_page_urls": [
+    "https://www.facebook.com/fitparentsclub",
+    "https://www.facebook.com/quickhomeworkouts",
+    "https://www.facebook.com/thirdpage-should-be-capped"
+  ],
+  "facebook_group_urls": ["https://www.facebook.com/groups/busyparentfitness"],
+  "competitor_handles": ["@fitmomdaily", "dadbodreset", "@15minfit", "@fourth-should-be-capped"],
+  "audience": "parents with under 20 minutes a day who want to feel strong again"
+}

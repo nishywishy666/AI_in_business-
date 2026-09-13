@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 95,
+  "posts": [
+    {
+      "id": "fbg000000000000301",
+      "url": "https://www.facebook.com/groups/busyparentfitness/posts/fbg000000000000301",
+      "text": "What's everyone's go-to 10 minute workout when the kids finally nap? #busyparents",
+      "timestamp": 1757548800,
+      "reactions": 640,
+      "comments": 212,
+      "shares": 18,
+      "author": {"name": "Group Member"}
+    }
+  ]
+}

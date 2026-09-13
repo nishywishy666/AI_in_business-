@@ -1,0 +1,44 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 96,
+  "reels": [
+    {
+      "id": "3450000000000000101",
+      "code": "C-abc101",
+      "caption": {"text": "Before/after 30 days of 15 minute home workouts #homeworkout #fitmom #transformation"},
+      "taken_at": 1757505600,
+      "user": {"username": "fitmomdaily"},
+      "like_count": 88000,
+      "comment_count": 1500,
+      "reshare_count": 6200,
+      "play_count": 1400000,
+      "video_duration": 24.5,
+      "clips_metadata": {"music_info": {"music_asset_info": {"title": "Trending Audio 12"}}}
+    },
+    {
+      "id": "3450000000000000102",
+      "code": "C-abc102",
+      "caption": {"text": "Every dog owner knows this feeling #dogs #puppy"},
+      "taken_at": 1757419200,
+      "user": {"username": "pupworld"},
+      "like_count": 420000,
+      "comment_count": 5600,
+      "reshare_count": 39000,
+      "play_count": 6100000,
+      "video_duration": 15.0
+    },
+    {
+      "id": "3450000000000000103",
+      "code": "C-abc103",
+      "caption": {"text": "Comparison: 5 min morning stretch vs 45 min gym #busyparents #homeworkout"},
+      "taken_at": 1757592000,
+      "user": {"username": "quickhomeworkouts"},
+      "like_count": 27000,
+      "comment_count": 640,
+      "reshare_count": 4100,
+      "play_count": 380000,
+      "video_duration": 31.0
+    }
+  ]
+}

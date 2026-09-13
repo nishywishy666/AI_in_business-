@@ -1,0 +1,31 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 95,
+  "reels": [
+    {
+      "id": "fb1000000000000201",
+      "url": "https://www.facebook.com/reel/fb1000000000000201",
+      "description": "Quick 15 min home workout for busy parents - no equipment needed! #homeworkout #busyparents",
+      "publish_time": 1757505600,
+      "reactions_count": 8400,
+      "comments_count": 310,
+      "shares_count": 1900,
+      "view_count": null,
+      "duration": 33,
+      "page_name": "Fit Parents Club"
+    },
+    {
+      "id": "fb1000000000000202",
+      "url": "https://www.facebook.com/reel/fb1000000000000202",
+      "description": "Our members' favourite stretch before bed",
+      "publish_time": 1757332800,
+      "reactions_count": 1200,
+      "comments_count": 45,
+      "shares_count": 210,
+      "view_count": 40000,
+      "duration": 52,
+      "page_name": "Fit Parents Club"
+    }
+  ]
+}

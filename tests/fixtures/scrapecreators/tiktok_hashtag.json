@@ -1,0 +1,27 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 96,
+  "aweme_list": [
+    {
+      "aweme_id": "7402000000000000011",
+      "desc": "15 minute full body, no equipment, toddler optional #homeworkout #busyparents",
+      "create_time": 1757505600,
+      "share_url": "https://www.tiktok.com/@15minfit/video/7402000000000000011",
+      "author": {"unique_id": "15minfit"},
+      "statistics": {"digg_count": 41000, "comment_count": 620, "share_count": 3900, "play_count": 510000},
+      "video": {"duration": 19000},
+      "text_extra": [{"hashtag_name": "homeworkout"}, {"hashtag_name": "busyparents"}]
+    },
+    {
+      "aweme_id": "7402000000000000012",
+      "desc": "Why I stopped doing 1 hour gym sessions after kids #homeworkout #fitmom",
+      "create_time": 1757419200,
+      "share_url": "https://www.tiktok.com/@strongmama/video/7402000000000000012",
+      "author": {"unique_id": "strongmama"},
+      "statistics": {"digg_count": 23000, "comment_count": 900, "share_count": 1200, "play_count": 300000},
+      "video": {"duration": 38000},
+      "text_extra": [{"hashtag_name": "homeworkout"}, {"hashtag_name": "fitmom"}]
+    }
+  ]
+}

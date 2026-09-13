@@ -1,0 +1,51 @@
+{
+  "success": true,
+  "credits_charged": 1,
+  "credits_remaining": 97,
+  "aweme_list": [
+    {
+      "aweme_id": "7401000000000000001",
+      "desc": "POV: you finally have 15 minutes to yourself #homeworkout #busyparents #fitness",
+      "create_time": 1757548800,
+      "share_url": "https://www.tiktok.com/@fitmomdaily/video/7401000000000000001",
+      "author": {"unique_id": "fitmomdaily", "nickname": "Fit Mom Daily"},
+      "statistics": {"digg_count": 184000, "comment_count": 2100, "share_count": 9400, "play_count": 2100000},
+      "video": {"duration": 21000},
+      "music": {"title": "original sound - fitmomdaily"},
+      "text_extra": [{"hashtag_name": "homeworkout"}, {"hashtag_name": "busyparents"}, {"hashtag_name": "fitness"}]
+    },
+    {
+      "aweme_id": "7401000000000000002",
+      "desc": "Rating my roommates' 5am alarms #college #roommate",
+      "create_time": 1757462400,
+      "share_url": "https://www.tiktok.com/@dormlife/video/7401000000000000002",
+      "author": {"unique_id": "dormlife", "nickname": "dorm life"},
+      "statistics": {"digg_count": 950000, "comment_count": 12000, "share_count": 41000, "play_count": 9800000},
+      "video": {"duration": 34000},
+      "music": {"title": "Funny Song"},
+      "text_extra": [{"hashtag_name": "college"}, {"hashtag_name": "roommate"}]
+    },
+    {
+      "aweme_id": "7401000000000000003",
+      "desc": "The only 3 exercises dads need. No equipment. #dadbod #noequipment #homeworkout",
+      "create_time": 1757592000,
+      "share_url": "https://www.tiktok.com/@dadbodreset/video/7401000000000000003",
+      "author": {"unique_id": "dadbodreset", "nickname": "Dad Bod Reset"},
+      "statistics": {"digg_count": 62000, "comment_count": 800, "share_count": 5200, "play_count": 640000},
+      "video": {"duration": 28000},
+      "music": {"title": "original sound"},
+      "text_extra": [{"hashtag_name": "dadbod"}, {"hashtag_name": "noequipment"}, {"hashtag_name": "homeworkout"}]
+    },
+    {
+      "aweme_id": "7401000000000000004",
+      "desc": "Cooking dinner in 12 minutes flat #dinner #quickmeals",
+      "create_time": 1757376000,
+      "share_url": "https://www.tiktok.com/@fastfam/video/7401000000000000004",
+      "author": {"unique_id": "fastfam", "nickname": "Fast Fam"},
+      "statistics": {"digg_count": 310000, "comment_count": 4100, "share_count": 22000, "play_count": 4200000},
+      "video": {"duration": 45000},
+      "music": {"title": "Kitchen Beat"},
+      "text_extra": [{"hashtag_name": "dinner"}, {"hashtag_name": "quickmeals"}]
+    }
+  ]
+}
