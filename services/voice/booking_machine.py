@@ -52,6 +52,21 @@ class BookingDeps:
     owner_email: str | None = None
 
 
+def _booking_note(slot, why: str) -> str:
+    """The callback row's 'question' when the machine itself bails out of a booking. Previously the
+    caller's last utterance ("Yes, that's right.", an email address, or nothing) was written there,
+    which is what the owner then saw on the Callbacks screen (lessons/0008)."""
+    bits = []
+    if getattr(slot, "party_size", None):
+        bits.append(f"{slot.party_size} people")
+    if getattr(slot, "date", None):
+        bits.append(str(slot.date))
+    if getattr(slot, "time", None):
+        bits.append(str(slot.time))
+    wanted = "Wanted to book " + (" · ".join(bits) if bits else "a table")
+    return f"{wanted} — {why}. Call back to finish the booking."
+
+
 class BookingMachine:
     def __init__(self, deps: BookingDeps, clock=lambda: dt.datetime.now(dt.timezone.utc)) -> None:
         self.deps = deps
@@ -179,7 +194,8 @@ class BookingMachine:
         result = {"open": False, "slot_id": avail.slot_id, "exists": avail.exists,
                   "alternatives": [a.slot_id for a in alternatives]}
         if not alternatives:
-            return self._to_callback(session, ctx, "other", "", lead=templates.SLOT_FULL_NO_ALTERNATIVES,
+            return self._to_callback(session, ctx, "other", _booking_note(slot, "that time was full with nothing nearby"),
+                                     lead=templates.SLOT_FULL_NO_ALTERNATIVES,
                                      tool_called="check_availability", tool_args=args, tool_result=result)
         slot.offered_alternatives = [a.slot_id for a in alternatives]
         slot.stage = "time"
@@ -287,13 +303,15 @@ class BookingMachine:
             alternatives = capacity.nearby_options(self.deps.reader, ctx.business_id, slot.date, slot.time,
                                                    slot.party_size, self.deps.windows)
             if not alternatives:
-                return self._to_callback(session, ctx, "other", "", lead=templates.SLOT_FULL_NO_ALTERNATIVES)
+                return self._to_callback(session, ctx, "other", _booking_note(slot, "that time filled up with nothing nearby"),
+                                         lead=templates.SLOT_FULL_NO_ALTERNATIVES)
             slot.offered_alternatives = [a.slot_id for a in alternatives]
             return BookingStep(templates.SLOT_FULL_ALTERNATIVES.format(
                 alternatives=capacity.speak_alternatives(alternatives, now_local.date(), slot.date)),
                 tool_called="commit_booking", tool_result={"outcome": "slot_full"})
         except commit.SlotMissing:
-            return self._to_callback(session, ctx, "other", "", lead=templates.SLOT_FULL_NO_ALTERNATIVES,
+            return self._to_callback(session, ctx, "other", _booking_note(slot, "that time is not on the booking sheet"),
+                                     lead=templates.SLOT_FULL_NO_ALTERNATIVES,
                                      tool_called="commit_booking", tool_result={"outcome": "slot_missing"})
         slot.stage = "done"
         # AFTER the commit: email + Calendar, both idempotent, neither can fail the booking.
@@ -317,7 +335,7 @@ class BookingMachine:
         attempts = slot.attempts.get(field, 0) + (1 if count else 0)
         slot.attempts[field] = attempts
         if attempts > threshold("MAX_FIELD_ATTEMPTS") and field != "email":
-            return self._to_callback(session, ctx, "other", text)
+            return self._to_callback(session, ctx, "other", _booking_note(slot, f"the {field} could not be captured"))
         return BookingStep(prompt)
 
     def _to_callback(self, session: CallSession, ctx: BusinessContext, reason: str, text: str, *,
