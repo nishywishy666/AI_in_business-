@@ -1,10 +1,13 @@
 """The Overlord: answers the owner's questions from what the two agents already wrote.
 
 Grounding only — it never scrapes, never triggers a scan, never reads Firestore outside what the
-dashboard already loaded (OVERLORD.md). Gemini phrases the answer from a JSON packet of numbers
-computed in Python; with no key (or on any failure) a deterministic template answers from the same
-numbers, so the bubble always replies. Marketing answers cite the scan id; limits say whether they
-reset (Gemini/YouTube: midnight Pacific) or never do (ScrapeCreators).
+dashboard already loaded (OVERLORD.md). Gemini phrases the answer from a JSON packet computed in
+Python: the call analytics, the latest scan, and (plan 0013) the business's own database — menu,
+facts, bookings, callbacks, recent calls, unanswered questions — so "what toasties do we sell" or
+"who is waiting on a call back" is answered from the same records the screens show. With no key (or
+on any failure) a deterministic template answers from the same packet, so the bubble always replies.
+Marketing answers cite the scan id; limits say whether they reset (Gemini/YouTube: midnight Pacific)
+or never do (ScrapeCreators).
 """
 from __future__ import annotations
 
@@ -16,11 +19,23 @@ from typing import Any, Protocol
 log = logging.getLogger(__name__)
 
 SYSTEM = """You are the Overlord, the owner's assistant for {business_name}, a small restaurant. Answer the owner's question using ONLY the DATA JSON supplied. Rules:
-- Two to four plain sentences, spoken register, no markdown, no bullet points, no headings.
+- Two to five plain sentences, spoken register, no markdown, no bullet points, no headings.
 - Quote the numbers exactly as given. If a value is null or missing, say it is not available yet — never guess.
+- DATA.knowledge is the business's own database: the confirmed menu (every item with price, description, dietary tags and confirmed allergens), the facts callers are told (hours, address, parking, delivery, catering and so on), bookings, callbacks with the callers' phone numbers, the recent call log with one-line summaries, and the questions the receptionist could not answer. Use it for anything about the business itself. DATA.knowledge.lookup, when present, is the receptionist's own answer to this exact question — prefer it.
+- When asked for a list (menu items, callbacks, bookings), name every relevant entry, in flowing sentences.
 - For anything about trends, content or marketing, start with "From scan <scan_id>" and say the numbers are from that scan, not a live scrape.
 - If you mention a usage limit, say whether it resets (Gemini and YouTube reset at midnight Pacific) or never resets (ScrapeCreators credits).
-- Do not invent bookings, calls, questions, or trends that are not in DATA."""
+- Do not invent menu items, bookings, calls, questions, or trends that are not in DATA."""
+
+MENU_WORDS = ("menu", "toastie", "toasties", "sandwich", "sandwiches", "dish", "dishes", "food", "eat", "price",
+              "prices", "cost", "sell", "serve", "offer", "items", "what do you have", "what do we have",
+              "what do you do", "what's on", "whats on")
+# a question about counts, a period, or the receptionist's records is an analytics question even if it
+# also names a fact word ("who is waiting on a callback" must not become the wait-time fact)
+COUNT_WORDS = ("how many", "number of", "count", "today", "this week", "last week", "yesterday", "took",
+               "handled", "did the ai", "did the receptionist")
+RECORD_WORDS = ("callback", "call back", "waiting", "booking", "cover", "question", "asking", "calling about",
+                "unanswered", "calls")
 
 
 class OverlordTransport(Protocol):
@@ -58,8 +73,11 @@ class GenAiOverlordTransport:
         return response.text or ""
 
 
-def build_packet(*, business_name: str, voice_today: dict, voice_week: dict, marketing: dict | None) -> dict[str, Any]:
+def build_packet(*, business_name: str, voice_today: dict, voice_week: dict, marketing: dict | None,
+                 knowledge: dict | None = None) -> dict[str, Any]:
     packet: dict[str, Any] = {"business": business_name, "voice": {"today": voice_today, "this_week": voice_week}}
+    if knowledge is not None:
+        packet["knowledge"] = knowledge
     if marketing is None:
         packet["marketing"] = {"scan_id": None, "note": "no scan has run yet"}
     elif marketing.get("empty"):
@@ -96,7 +114,22 @@ async def answer(question: str, packet: dict[str, Any], *, transport: OverlordTr
 
 
 def _sources(packet: dict) -> dict:
-    return {"scan_id": (packet.get("marketing") or {}).get("scan_id"), "voice_periods": ["today", "this week"]}
+    out: dict[str, Any] = {"scan_id": (packet.get("marketing") or {}).get("scan_id"), "voice_periods": ["today", "this week"]}
+    knowledge = packet.get("knowledge") or {}
+    if knowledge:
+        out["knowledge"] = [k for k in ("menu", "facts", "bookings", "callbacks", "recent_calls", "unanswered_questions")
+                            if knowledge.get(k)]
+    return out
+
+
+def _menu_line(knowledge: dict) -> str:
+    items = knowledge.get("menu") or []
+    bits = []
+    for item in items:
+        desc = f" — {item['description']}" if item.get("description") else ""
+        bits.append(f"{item['name']} ({item.get('price')}){desc}")
+    name = knowledge.get("business_name") or "The business"
+    return f"{name} has {len(items)} confirmed menu item{'s' if len(items) != 1 else ''}: " + "; ".join(bits) + "."
 
 
 def template_answer(question: str, packet: dict[str, Any]) -> str:
@@ -104,6 +137,7 @@ def template_answer(question: str, packet: dict[str, Any]) -> str:
     q = (question or "").lower()
     today, week = packet["voice"]["today"], packet["voice"]["this_week"]
     marketing = packet.get("marketing") or {}
+    knowledge = packet.get("knowledge") or {}
     if any(w in q for w in ("trend", "post", "film", "content", "marketing", "video", "tiktok", "instagram")):
         if not marketing.get("scan_id"):
             return "No trend scan has landed yet, so there is nothing to recommend. The first scan is scheduled; check the Marketing screen once it runs."
@@ -121,17 +155,30 @@ def template_answer(question: str, packet: dict[str, Any]) -> str:
         if credits.get("remaining") is not None:
             lead += f"{credits['remaining']} ScrapeCreators credits remain, and those never reset."
         return lead.strip()
+    # the business itself — menu, hours, parking, delivery… — unless it is really about the records
+    if knowledge and not any(w in q for w in COUNT_WORDS + RECORD_WORDS):
+        if knowledge.get("menu") and any(w in q for w in MENU_WORDS):
+            return _menu_line(knowledge)
+        lookup = knowledge.get("lookup") or {}
+        if lookup.get("answer"):
+            return str(lookup["answer"])
     if "booking" in q or "cover" in q or "table" in q:
         return (f"Today the receptionist took {today.get('bookings', 0)} bookings for {today.get('covers', 0)} covers; "
                 f"this week it is {week.get('bookings', 0)} bookings for {week.get('covers', 0)} covers, "
                 f"versus {week.get('bookings_previous', 0)} the week before.")
     if "callback" in q or "waiting" in q or "call back" in q:
-        opens = today.get("open_callbacks") or []
+        opens = [c for c in (knowledge.get("callbacks") or []) if c.get("status") != "done"] or today.get("open_callbacks") or []
         if not opens:
             return "Nobody is waiting on a callback right now."
-        first = opens[0]
-        return (f"{len(opens)} callback{'s are' if len(opens) != 1 else ' is'} open. The oldest is {first.get('name') or 'a caller'}: "
-                f"\"{first.get('question') or first.get('reason')}\". Open the Callbacks screen to mark them done.")
+        parts = []
+        for c in opens[:5]:
+            who = c.get("name") or "a caller"
+            if c.get("phone"):
+                who += f" on {c['phone']}"
+            parts.append(f"{who} asked \"{c.get('question') or c.get('reason')}\"")
+        more = f", and {len(opens) - 5} more" if len(opens) > 5 else ""
+        return (f"{len(opens)} callback{'s are' if len(opens) != 1 else ' is'} open: " + "; ".join(parts) + more
+                + ". Open the Callbacks screen to see each call's transcript and mark them done.")
     if "question" in q or "ask" in q or "calling about" in q or "unanswered" in q:
         routes = week.get("by_route") or {}
         order = ", ".join(f"{k.lower()}s {v}" for k, v in sorted(routes.items(), key=lambda kv: -kv[1])) or "no calls yet"

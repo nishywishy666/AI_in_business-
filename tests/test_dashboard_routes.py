@@ -1,8 +1,11 @@
 """The JSON API the injected bridge calls, end to end over a seeded local run and the offline
 marketing agent (fixtures + deterministic Gemini fake). No network, no keys."""
+import re
+
 import pytest
 from fastapi.testclient import TestClient
 
+from dashboard import present
 from tests.dashboard_helpers import BUSINESS_ID, dashboard_app
 
 TEMPLATE_FIELDS = {"callsData": ("id", "time", "duration", "route", "outcome", "confidence", "cost", "transcript"),
@@ -41,6 +44,11 @@ def test_bootstrap_matches_the_template_contract(client):
         for field in fields:
             assert field in rows[0], f"{name}.{field}"
     assert d["business"] == {"id": BUSINESS_ID, "name": "Uncle Tony", "timezone": "Australia/Melbourne", "source": "local", "demo": True}
+    # plan 0013: the number is shown in full (no masking) and the card can open the call it came from
+    cb = d["callbacks"][0]
+    assert "•" not in cb["number"] and cb["phone"] and cb["fullName"] and cb["callId"]
+    assert cb["number"] == present.format_phone(cb["phone"]) and re.fullmatch(r"0\d{3} \d{3} \d{3}|0\d \d{4} \d{4}", cb["number"])
+    assert cb["callId"] in {c["id"] for c in d["calls"]}, "the transcript behind Open is in the same payload"
     k = d["overview"]["kpis"]
     assert k["kpiCalls"] == "10" and k["kpiBookings"] == "3" and k["kpiCovers"] == "12"
     # plan 0012: "Do you do delivery?" is answered from a fact now, so one fewer gap than the mockup's day
@@ -57,6 +65,7 @@ def test_bootstrap_matches_the_template_contract(client):
     assert d["setup"]["packetFields"][0] == {"label": "Hours", "value": "7:30am to 2:30pm Monday to Friday, and 8am to 3pm on Saturday. Closed Sunday."}
     assert d["usage"]["minutesIncluded"] == 1000 and d["usage"]["pct"] >= 0
     assert d["trends"]["empty"] is True and d["trends"]["greeting"]
+    assert d["trends"]["pullCost"] == 4 and d["trends"]["pullPlatforms"] == ["TikTok", "Instagram", "Facebook", "YouTube Shorts"]
 
 
 def test_call_rows_carry_transcripts_metrics_and_summaries(client):
@@ -105,7 +114,7 @@ def test_callback_status_gap_reviews_and_settings_persist(client):
 def test_marketing_flow_through_the_dashboard(client):
     assert client.get("/api/marketing/brief").status_code == 404  # empty state before the first scan
     job = client.post("/api/jobs/marketing-scan")  # local sink + no CRON_SECRET → allowed
-    assert job.status_code == 200 and job.json()["scan_id"] and job.json()["credits_spent"] == 3
+    assert job.status_code == 200 and job.json()["scan_id"] and job.json()["credits_spent"] == 4  # one per platform, plan 0013
     trends = client.get("/api/dashboard/trends").json()
     assert not trends["empty"] and trends["items"] and trends["items"][0]["score"] == 99
     assert {t["platform"] for t in trends["items"]} <= {"TikTok", "Instagram", "YouTube Shorts", "Facebook", "Reddit"}
@@ -190,17 +199,28 @@ def test_save_sticks_even_when_every_free_model_is_paused(tmp_path):
         assert post_id in after["savedIds"] and after["savedCount"] >= 1
 
 
-def test_refresh_trends_rereads_the_brief_now(tmp_path):
-    """The "Refresh now" button: never 500s on an empty state, and picks up a brief that landed after
-    the once-a-day local cache was written — the case where the UI would otherwise show nothing.
-    Own app: the module client has already run a scan by the time this test runs."""
-    app, _, _ = dashboard_app(tmp_path)
+def test_refresh_now_pulls_every_platform_live(tmp_path):
+    """"Refresh now" is a pull (plan 0013): on an empty app it runs the first scan itself; a second
+    click inside the 48h cache window still fetches every platform live again; a pull already in
+    flight is reported, not doubled. Own app: the module client has already scanned by now."""
+    app, ctx, _ = dashboard_app(tmp_path)
     with TestClient(app) as c:
-        empty = c.post("/api/dashboard/trends/refresh")
-        assert empty.status_code == 200 and empty.json()["empty"] is True and empty.json()["note"]
-        assert c.post("/api/jobs/marketing-scan").status_code == 200
-        fresh = c.post("/api/dashboard/trends/refresh").json()
-        assert not fresh["empty"] and fresh["items"] and fresh["scanId"]
+        first = c.post("/api/dashboard/trends/refresh")
+        assert first.status_code == 200
+        body = first.json()
+        assert not body["empty"] and body["items"] and body["scanId"]
+        assert body["pull"]["ran"] is True and body["pull"]["liveCalls"] == 4 and body["pull"]["creditsSpent"] == 4
+        assert body["pull"]["platforms"] == ["TikTok", "Instagram", "Facebook", "YouTube Shorts"]
+        assert all(t["url"] for t in body["items"]), "every card carries the link the Watch button opens"
+        again = c.post("/api/dashboard/trends/refresh").json()
+        assert again["pull"]["ran"] is True and again["pull"]["creditsSpent"] == 4, "bypasses the 48h request cache"
+        assert again["scanId"] != body["scanId"]
+        ctx.marketing._pull_lock.acquire()
+        try:
+            busy = c.post("/api/dashboard/trends/refresh").json()
+            assert busy["pull"]["ran"] is False and "already" in busy["pull"]["note"] and busy["items"]
+        finally:
+            ctx.marketing._pull_lock.release()
 
 
 def test_overlord_answers_from_the_records_without_a_model(client):
@@ -210,7 +230,24 @@ def test_overlord_answers_from_the_records_without_a_model(client):
     assert "bookings" in r["answer"] and "covers" in r["answer"]
     r = client.post("/api/overlord/ask", json={"question": "Who is waiting on a callback?"}).json()
     assert "callback" in r["answer"].lower()
+    if "open:" in r["answer"]:  # plan 0013: open callbacks are named with their full number
+        assert re.search(r"on 0\d{3} \d{3} \d{3}", r["answer"]), r["answer"]
     assert client.post("/api/overlord/ask", json={"question": ""}).status_code == 400
+
+
+def test_overlord_answers_from_the_business_database_without_a_model(client):
+    """Plan 0013: the packet carries the menu, facts, bookings, callbacks and recent calls, and the
+    template fallback answers menu and fact questions from it."""
+    r = client.post("/api/overlord/ask", json={"question": "what type of toasties do you have"}).json()
+    assert "The Uncle Tony" in r["answer"] and "$19.00" in r["answer"] and r["model"] is None
+    assert {"menu", "facts", "callbacks", "recent_calls"} <= set(r["grounded_on"]["knowledge"])
+    r = client.post("/api/overlord/ask", json={"question": "Do we do delivery?"}).json()
+    assert "takeaway only" in r["answer"]
+    r = client.post("/api/overlord/ask", json={"question": "Where do people park?"}).json()
+    assert "Atherton Road" in r["answer"]
+    # a count question about a fact word is still an analytics answer
+    r = client.post("/api/overlord/ask", json={"question": "How many bookings did the AI take this week?"}).json()
+    assert "bookings" in r["answer"] and "covers" in r["answer"]
 
 
 def test_jobs_require_the_cron_secret_when_configured(client):

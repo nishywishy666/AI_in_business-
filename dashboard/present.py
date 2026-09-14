@@ -13,7 +13,7 @@ from collections import defaultdict
 from typing import Any
 
 from services.common.firestore import BusinessPaths
-from services.voice.tools import BusinessReader, load_business_context
+from services.voice.tools import BusinessReader, answer_question, load_business_context
 
 from . import analytics as an
 from .records import CallRecord, CallbackRecord, Snapshot
@@ -75,17 +75,21 @@ def wait_label(secs: float | None) -> str:
     return f"{secs // 86_400} d {secs % 86_400 // 3600} h"
 
 
-def mask_phone(phone: str | None) -> str:
+def format_phone(phone: str | None) -> str:
+    """The full number, readable: +61 mobiles as 0412 345 678, +61 landlines as 03 9568 1234, anything
+    else as stored. Plan 0013: the owner sees every digit — the receptionist took the number so the
+    owner can ring it back, so nothing is masked."""
     if not phone:
         return "no number"
-    digits = "".join(ch for ch in phone if ch.isdigit() or ch == "+")
-    if digits.startswith("+61") and len(digits) > 4:
+    raw = str(phone).strip()
+    digits = "".join(ch for ch in raw if ch.isdigit() or ch == "+")
+    if digits.startswith("+61") and len(digits) >= 11:
         digits = "0" + digits[3:]
-    if len(digits) <= 4:
-        return "••••"
-    keep = digits[:-3] if len(digits) <= 8 else digits[:len(digits) - 3]
-    keep = keep[:4] + " " + keep[4:] if len(keep) > 4 else keep
-    return f"{keep.rstrip()} •••"
+    if digits.startswith("0") and len(digits) == 10 and digits.isdigit():
+        if digits[1] in "45":
+            return f"{digits[:4]} {digits[4:7]} {digits[7:]}"
+        return f"{digits[:2]} {digits[2:6]} {digits[6:]}"
+    return raw
 
 
 def display_name(name: str | None, phone: str | None) -> str:
@@ -174,7 +178,8 @@ def callback_row(cb: CallbackRecord, settings: DashboardSettings, *, now: dt.dat
     cls = an.handoff_class(cb.reason, settings)
     status = {"open": "open", "in_progress": "in progress", "in progress": "in progress", "done": "done"}.get(cb.status, cb.status)
     return {
-        "id": cb.id, "name": display_name(cb.name, cb.phone), "number": mask_phone(cb.phone),
+        "id": cb.id, "name": display_name(cb.name, cb.phone), "fullName": cb.name or "Caller",
+        "number": format_phone(cb.phone), "phone": cb.phone,
         "question": cb.question or f"{cb.reason.replace('_', ' ').capitalize()} — no question recorded",
         "time": relative_day_label(cb.created_at, now, settings), "priority": "High" if cls == "planned" else "Medium",
         "status": status, "reason": cb.reason, "handoffClass": cls, "createdAt": cb.created_at.isoformat(),
@@ -190,6 +195,82 @@ def gap_rows(analytics: dict, settings: DashboardSettings, *, now: dt.datetime) 
                      "lastAsked": relative_day_label(last, now, settings), "review": gap["review"], "answer": gap["answer"],
                      "callIds": gap["call_ids"]})
     return rows
+
+
+# ---- the whole business, for the Overlord (plan 0013) -------------------------------------------------
+
+def when_label(moment: dt.datetime | None, settings: DashboardSettings) -> str | None:
+    if moment is None:
+        return None
+    local = moment.astimezone(settings.tz)
+    return f"{local.strftime('%a %d %b %Y')}, {clock_label(local.time())}"
+
+
+def knowledge_payload(reader: BusinessReader, business_id: str, snapshot: Snapshot, settings: DashboardSettings, *,
+                      now: dt.datetime, max_calls: int = 30, max_rows: int = 40) -> dict:
+    """Everything the two agents wrote or read, as one JSON section the Overlord can ground on: the
+    confirmed menu with prices and allergens, every business fact, bookings, callbacks with their
+    numbers (this is the owner's own data), the recent call log with one-line summaries, and the
+    questions the receptionist could not answer. Bounded so the prompt stays a few thousand tokens."""
+    ctx = load_business_context(reader, business_id)
+    paths = BusinessPaths(business_id)
+    facts: dict[str, Any] = {}
+    for key, doc in reader.list_docs(paths.facts):
+        value = (doc or {}).get("value")
+        if value not in (None, ""):
+            facts[key] = value
+    menu = [{"name": item.name, "section": item.section, "price": item.price_spoken or "price not confirmed",
+             "description": item.doc.get("description"), "dietary": item.dietary_tags,
+             "allergens_confirmed": {a: e.get("status") for a, e in item.allergens.items() if e.get("confirmed")}}
+            for item in ctx.items]
+    by_call: dict[str, list[CallbackRecord]] = defaultdict(list)
+    for cb in snapshot.callbacks:
+        by_call[cb.call_id].append(cb)
+    calls = []
+    for call in sorted(snapshot.calls, key=lambda c: c.started_at, reverse=True)[:max_calls]:
+        route, outcome = an.route_of(call, by_call), an.outcome_label(call, by_call)
+        caller_first = next((t.text for t in call.turns if t.speaker == "caller" and t.text), None)
+        calls.append({"call_id": call.call_id, "started": when_label(call.started_at, settings),
+                      "from": format_phone(call.from_number) if call.from_number else None, "route": route,
+                      "outcome": outcome, "duration": duration_label(call.duration_secs),
+                      "summary": _summary(call, route, outcome, caller_first, by_call.get(call.call_id) or [])})
+    bookings = [{"name": b.name, "phone": format_phone(b.phone) if b.phone else None, "party_size": b.party_size,
+                 "starts_at": when_label(b.starts_at, settings), "status": b.status, "email": b.email,
+                 "made": when_label(b.created_at, settings)}
+                for b in sorted(snapshot.bookings, key=lambda b: (b.starts_at or b.created_at), reverse=True)[:max_rows]]
+    callbacks = [{"name": cb.name, "phone": format_phone(cb.phone) if cb.phone else None, "question": cb.question,
+                  "reason": cb.reason.replace("_", " "), "status": cb.status,
+                  "logged": when_label(cb.created_at, settings), "call_id": cb.call_id}
+                 for cb in sorted(snapshot.callbacks,
+                                  key=lambda cb: (cb.status == "done", -cb.created_at.timestamp()))[:max_rows]]
+    gaps = [{"question": g.text, "asked_by_calls": g.evidence, "last_asked": when_label(g.last_asked, settings),
+             "review": g.review.status if g.review else None, "answer": g.review.answer if g.review else None}
+            for g in an.group_gaps(snapshot.calls, snapshot.reviews)]
+    return {"business_name": ctx.business_name, "menu": menu, "facts": facts, "bookings": bookings,
+            "callbacks": callbacks, "recent_calls": calls, "unanswered_questions": gaps,
+            "counts": {"calls_on_record": len(snapshot.calls), "bookings_on_record": len(snapshot.bookings),
+                       "callbacks_on_record": len(snapshot.callbacks)},
+            "as_of": when_label(snapshot.as_of, settings)}
+
+
+def knowledge_lookup(question: str, reader: BusinessReader, business_id: str) -> dict | None:
+    """The receptionist's own question → lookup mapping (menu item, section, fact, allergen), reused so
+    the Overlord answers "what's on the menu" or "do we deliver" from the same confirmed data callers
+    hear — and so the template fallback can answer without a model. Phrased for the owner, not a caller."""
+    ctx = load_business_context(reader, business_id)
+    found = answer_question(question, ctx, reader)
+    if found.source == "not_found" or not found.template:
+        return None
+    payload = found.payload or {}
+    if found.source == "fact":
+        answer = str(payload.get("value") or found.template)
+    elif found.tool == "get_section_items":
+        items = ", ".join(f"{i['name']} ({i.get('price') or 'price not confirmed'})" for i in payload.get("items", []))
+        more = int(payload.get("remaining_count") or 0)
+        answer = f"In {payload.get('section')}: {items}" + (f", and {more} more." if more else ".")
+    else:
+        answer = found.template
+    return {"tool": found.tool, "source": found.source, "answer": answer, "payload": payload}
 
 
 # ---- tiles ------------------------------------------------------------------------------------------------

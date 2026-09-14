@@ -235,7 +235,7 @@ class ScrapeCreatorsUsage(RadarModel):
     spent_today: int = 0
     reserve: int = 15
     usable_now: int = 0
-    next_scan_estimated_cost: int = 3
+    next_scan_estimated_cost: int = 4
     transcripts_affordable: bool = False
     status: ProviderStatus = "unknown"
     resets: bool = False

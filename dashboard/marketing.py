@@ -19,7 +19,8 @@ from marketing_radar.agent.gemini import GeminiExhausted
 from marketing_radar.agent.like import PostNotFound, choose_angle, like_post
 from marketing_radar.config import Settings
 from marketing_radar.deps import build_deps, offline_backend, offline_settings
-from marketing_radar.jobs.scan import ScanDeps
+from marketing_radar.jobs.scan import PLATFORM_SLOTS, ScanDeps
+from marketing_radar.scrapers import endpoint_by_key
 from marketing_radar.services import get_brief, get_marketing_summary, get_post, list_scripts, save_script
 from marketing_radar.services.api import RadarApi
 
@@ -62,6 +63,7 @@ class MarketingHub:
         self._injected = (settings, deps)  # what reset() restores, so an injected double survives it
         self._lock = threading.Lock()
         self._memo: dict[str, tuple[float, Any]] = {}
+        self._pull_lock = threading.Lock()  # one owner-triggered pull at a time (plan 0013)
         self.error: str | None = None
 
     # ---- read-through cache ----------------------------------------------------------------------
@@ -205,7 +207,8 @@ class MarketingHub:
             brief, deps = None, None
         if brief is None:
             return {"items": [], "likedIds": [], "savedIds": [], "savedCount": 0, "scanId": None, "empty": True,
-                    "note": self.error or "No scan yet — the first trend scan is scheduled.", "greeting": EMPTY_GREETING}
+                    "note": self.error or "No scan yet — the first trend scan is scheduled.", "greeting": EMPTY_GREETING,
+                    "offline": self.offline, **self._pull_info()}
         items, liked, saved_ids = [], [], []
         try:
             saved = list_scripts(deps.store, status="saved")
@@ -235,7 +238,44 @@ class MarketingHub:
                 "platformsNote": _platforms_note(items, brief), "scanId": brief["scan_id"],
                 "generatedAt": brief.get("generated_at"), "nextScanAt": brief.get("next_scan_at"), "kind": brief.get("kind"),
                 "weeklyTake": brief.get("weekly_take"), "patterns": brief.get("patterns") or [], "credits": brief.get("credits"),
-                "empty": False, "note": brief.get("note"), "greeting": CHAT_GREETING, "offline": self.offline}
+                "empty": False, "note": brief.get("note"), "greeting": CHAT_GREETING, "offline": self.offline,
+                **self._pull_info()}
+
+    def _pull_info(self) -> dict[str, Any]:
+        """What "Refresh now" will do, for the button's confirmation: every platform, live."""
+        try:
+            cost = int(self.settings.max_live_calls)
+        except Exception:
+            cost = len(PLATFORM_SLOTS)
+        return {"pullCost": cost, "pullPlatforms": [PLATFORM_LABELS[p] for p in PLATFORM_SLOTS]}
+
+    # ---- the owner's "Refresh now" (plan 0013) ------------------------------------------------------
+    def pull_now(self) -> dict[str, Any]:
+        """A real pull, not a re-read: every platform is fetched live through ScrapeCreators (bypassing
+        the 48h request cache), the brief is rebuilt, then the trends are re-read. One at a time — a
+        second click while a pull is running reports that instead of spending again."""
+        if not self._pull_lock.acquire(blocking=False):
+            out = self.trends(force=True)
+            out["pull"] = {"ran": False, "note": "A pull is already running; the list will update when it lands."}
+            return out
+        try:
+            from marketing_radar.jobs.scan import run_paid_scan
+
+            outcome = run_paid_scan(self.deps(), fresh=True)
+            platforms = [PLATFORM_LABELS.get(endpoint_by_key(c.endpoint_key).platform, c.endpoint_key)
+                         for c in outcome.planned]
+            pull: dict[str, Any] = {"ran": True, "note": outcome.note, "liveCalls": outcome.live_calls,
+                                    "creditsSpent": outcome.credits_spent, "platforms": platforms,
+                                    "scanId": outcome.brief.scan_id if outcome.brief else None}
+        except Exception as exc:
+            self.error = str(exc)[:200]
+            log.warning("pull failed: %s", exc)
+            pull = {"ran": False, "note": f"Pull failed: {str(exc)[:160]}"}
+        finally:
+            self._pull_lock.release()
+        out = self.trends(force=True)
+        out["pull"] = pull
+        return out
 
     # ---- write side (Like / Save) -------------------------------------------------------------------
     def like(self, post_id: str) -> tuple[int, dict]:
@@ -283,18 +323,34 @@ class MarketingHub:
 
 
 def _platforms_note(items: list[dict], brief: dict) -> str | None:
-    """Why a scan can come back all-YouTube: TikTok, Instagram and Facebook are ScrapeCreators
-    endpoints (paid credits), while YouTube, Reddit and Google Trends are the free sources. With no
-    credits left the scan still runs — on the free sources only — so say so rather than look broken."""
-    present = {c["platform"] for c in items}
-    missing = [label for label in ("TikTok", "Instagram", "Facebook") if label not in present]
-    if not missing or not items:
+    """Every scan is meant to carry all four platforms (plan 0013). When one is missing, say which and
+    why: its endpoint was never called (no credits, or Facebook without a page/group URL), or it was
+    called and nothing from it ranked into the lists."""
+    if not items:
         return None
+    present = {c["platform"] for c in items}
+    label_of = {p: PLATFORM_LABELS[p] for p in PLATFORM_SLOTS}
+    missing = [p for p in PLATFORM_SLOTS if label_of[p] not in present]
+    if not missing:
+        return None
+    sources = [str(s) for s in (brief.get("sources_used") or [])]
+    called = {p for p in PLATFORM_SLOTS if any(s.startswith(p) for s in sources)}
+    not_called = [label_of[p] for p in missing if p not in called]
+    ranked_out = [label_of[p] for p in missing if p in called]
     credits = brief.get("credits") if isinstance(brief.get("credits"), dict) else {}
     remaining = credits.get("remaining")
-    tail = (f"{remaining} ScrapeCreators credit{'s' if remaining != 1 else ''} left"
-            if isinstance(remaining, int) else "they need ScrapeCreators credits")
-    return f"No {', '.join(missing)} posts in this scan — {tail}."
+    parts = []
+    if not_called:
+        why = []
+        if "Facebook" in not_called:
+            why.append("Facebook needs a page or group URL (ScrapeCreators has no Facebook search)")
+        if [m for m in not_called if m != "Facebook"] or not why:
+            why.append(f"{remaining} ScrapeCreators credit{'s' if remaining != 1 else ''} left"
+                       if isinstance(remaining, int) else "they need ScrapeCreators credits")
+        parts.append(f"{', '.join(not_called)} not pulled this scan: {'; '.join(why)}")
+    if ranked_out:
+        parts.append(f"nothing from {', '.join(ranked_out)} ranked high enough this scan")
+    return ". ".join(p[0].upper() + p[1:] for p in parts) + "."
 
 
 def trend_card(post: dict, *, niche: bool, score: int) -> dict:

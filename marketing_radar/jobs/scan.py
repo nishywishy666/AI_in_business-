@@ -1,4 +1,5 @@
-"""Paid scan every 2 days + off-day recap (spec §10.3, §10.4, §11.3, §12.2)."""
+"""Paid scan every 2 days (or on the owner's "Refresh now") + off-day recap (spec §10.4, §11.3, §12.2;
+the call plan is plan 0013's one-call-per-platform, not the spec §10.3 rotation)."""
 from __future__ import annotations
 
 import datetime as dt
@@ -59,52 +60,66 @@ class ScanOutcome:
     synthesis: SynthesisResult | None = None
 
 
-# ---- rotation (spec §10.3) -----------------------------------------------------------
+# ---- one live call per platform (plan 0013; replaces the spec §10.3 rotation) -----------
+# The owner overrode spec constraint 5 ("max 3 live paid calls per scan") and §10.3's alternating
+# third call: every paid scan now pulls TikTok, Instagram, Facebook and YouTube Shorts, and no platform
+# is shed to protect the credit reserve. The rotation only decides *which* endpoint carries a
+# platform's slot, so consecutive scans do not ask for the same URL and get the 48h cache back.
+
+PLATFORM_SLOTS: tuple[str, ...] = ("tiktok", "instagram", "facebook", "youtube")
+
 
 def plan_calls(scan_index: int, context: ContextProfile, credits_remaining: int | None, settings: Settings, *,
                free_youtube_covers_shorts: bool = False) -> list[PlannedCall]:
+    """One call per platform, in `PLATFORM_SLOTS` order. Credit shedding only drops the calls that
+    literally cannot be paid for: unknown balance → all, 0 → none, N < len → the first N.
+    `free_youtube_covers_shorts` is accepted for compatibility and ignored — the free YouTube Data
+    API never stands in for the Shorts trending feed any more."""
     hashtags = context.hashtags or local_expand(context)
     hashtag = hashtags[(scan_index // 4) % len(hashtags)] if hashtags else None
-    keyword = (context.keywords or [context.niche])[(scan_index // 4) % max(1, len(context.keywords or [context.niche]))]
-    keyword = keyword or context.niche or hashtag or "trending"
+    keywords = context.keywords or [context.niche]
+    keyword = keywords[(scan_index // 4) % max(1, len(keywords))] or context.niche or hashtag or "trending"
     hashtag = hashtag or keyword.replace(" ", "")
-    page = context.facebook_page_urls[0] if context.facebook_page_urls else None
-    group = context.facebook_group_urls[0] if context.facebook_group_urls else None
 
-    row = scan_index % 4
-    if row == 0:
-        calls = [PlannedCall(1, "tiktok_trending"), PlannedCall(2, "instagram_hashtag", {"hashtag": hashtag}),
-                 PlannedCall(3, "facebook_page_reels", {"url": page}) if page else PlannedCall(3, "youtube_shorts_trending")]
-    elif row == 1:
-        third = (PlannedCall(3, "tiktok_keyword", {"query": keyword}) if free_youtube_covers_shorts
-                 else PlannedCall(3, "youtube_shorts_trending"))
-        calls = [PlannedCall(1, "tiktok_hashtag", {"hashtag": hashtag}), PlannedCall(2, "instagram_reels_trending"), third]
-    elif row == 2:
-        if group:
-            third = PlannedCall(3, "facebook_group_posts", {"url": group})
-        elif page:
-            third = PlannedCall(3, "facebook_page_reels", {"url": page})
-        else:
-            third = PlannedCall(3, "youtube_shorts_trending")
-        calls = [PlannedCall(1, "tiktok_keyword", {"query": keyword}), PlannedCall(2, "instagram_hashtag", {"hashtag": hashtag}), third]
-    else:
-        calls = [PlannedCall(1, "tiktok_trending"), PlannedCall(2, "instagram_reels_trending"), PlannedCall(3, "youtube_shorts_trending")]
+    tiktok = (PlannedCall(1, "tiktok_trending"), PlannedCall(1, "tiktok_hashtag", {"hashtag": hashtag}),
+              PlannedCall(1, "tiktok_keyword", {"query": keyword}), PlannedCall(1, "tiktok_trending"))[scan_index % 4]
+    instagram = (PlannedCall(2, "instagram_hashtag", {"hashtag": hashtag}) if scan_index % 2 == 0
+                 else PlannedCall(2, "instagram_reels_trending"))
+    facebook = _facebook_call(scan_index, context, settings)
+    youtube = PlannedCall(4, "youtube_shorts_trending")
+    calls = [c for c in (tiktok, instagram, facebook, youtube) if c is not None]
 
     calls = calls[:settings.max_live_calls]
     if credits_remaining is None:
         return calls
     if credits_remaining <= 0:
         return []
-    if credits_remaining == 1:
-        return calls[:1]
-    if credits_remaining <= settings.reserve:
-        return calls[:2]
-    return calls
+    return calls[:credits_remaining]
+
+
+def _facebook_call(scan_index: int, context: ContextProfile, settings: Settings) -> PlannedCall | None:
+    """Facebook has no keyword/trending endpoint on ScrapeCreators (spec §10.1 allowlist), so the slot
+    is a page's reels or a group's posts: the questionnaire's own URLs first, alternating page/group
+    when both exist, else the configured fallback pages. None only when there is nothing to call."""
+    pages, groups = list(context.facebook_page_urls), list(context.facebook_group_urls)
+    if not pages and not groups:
+        pages = list(settings.facebook_fallback_page_urls)
+    if pages and groups:
+        if scan_index % 2 == 1:
+            return PlannedCall(3, "facebook_group_posts", {"url": groups[(scan_index // 2) % len(groups)]})
+        return PlannedCall(3, "facebook_page_reels", {"url": pages[(scan_index // 2) % len(pages)]})
+    if groups:
+        return PlannedCall(3, "facebook_group_posts", {"url": groups[scan_index % len(groups)]})
+    if pages:
+        return PlannedCall(3, "facebook_page_reels", {"url": pages[scan_index % len(pages)]})
+    return None
 
 
 # ---- paid scan ------------------------------------------------------------------------
 
-def run_paid_scan(deps: ScanDeps) -> ScanOutcome:
+def run_paid_scan(deps: ScanDeps, *, fresh: bool = False) -> ScanOutcome:
+    """`fresh=True` is the owner's "Refresh now": every platform is fetched live, bypassing the 48h
+    request cache. The scheduled scan keeps `fresh=False` and reuses anything fetched recently."""
     now = deps.clock()
     try:
         bundle = daily_pull(deps.store, deps.cache, deps.settings, deps.clock)
@@ -125,7 +140,7 @@ def run_paid_scan(deps: ScanDeps) -> ScanOutcome:
     for call in planned:
         endpoint = endpoint_by_key(call.endpoint_key)
         try:
-            result = deps.scraper.fetch(endpoint, call.params)
+            result = deps.scraper.fetch(endpoint, call.params, fresh=fresh)
         except CreditsExhausted:
             log.warning("ScrapeCreators credits exhausted during scan")
             break
