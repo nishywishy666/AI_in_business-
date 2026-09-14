@@ -72,7 +72,10 @@ def main(argv: list[str] | None = None) -> int:
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
     for name in ("scan", "recap", "brief", "stats", "daily-pull", "reset", "scripts", "overlord", "expire"):
-        sub.add_parser(name, parents=[common(True)])
+        p = sub.add_parser(name, parents=[common(True)])
+        if name == "scan":
+            p.add_argument("--fresh", action="store_true",
+                           help="bypass the 48h request cache: pull every platform live (what the dashboard's Refresh now does)")
     sub.add_parser("like", parents=[common(True)]).add_argument("post_id")
     angle = sub.add_parser("angle", parents=[common(True)])
     angle.add_argument("post_id")
@@ -97,7 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         _print({"context": bundle.context.to_doc(), "scan_id": bundle.scan_id})
         return 0
     if args.command == "scan":
-        outcome = run_paid_scan(deps)
+        outcome = run_paid_scan(deps, fresh=bool(getattr(args, "fresh", False)))
         _print({"note": outcome.note, "planned": [c.endpoint_key for c in outcome.planned],
                 "live_calls": outcome.live_calls, "credits_spent": outcome.credits_spent,
                 "brief": outcome.brief.to_doc() if outcome.brief else None})

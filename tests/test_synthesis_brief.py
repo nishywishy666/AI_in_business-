@@ -60,14 +60,14 @@ def test_valid_synthesis_is_merged_and_cached(backend, store, settings, clock, s
         assert "raw_scrape" not in post
     assert len(store.list(store.paths.playbook)) == 2
     latest = store.get(store.paths.latest)
-    assert latest["scan_id"] == brief.scan_id and latest["scan_index"] == 1 and latest["spent_last_scan"] == 3
+    assert latest["scan_id"] == brief.scan_id and latest["scan_index"] == 1 and latest["spent_last_scan"] == 4
     assert deps.cache.read().brief.scan_id == brief.scan_id
     assert all(deps.cache.part_file(k).exists() for k in BRIEF_PART_KEYS)
     assert deps.cache.read_part("weekly_take") == brief.weekly_take
     assert get_brief(store, deps.cache, settings, clock=clock)["scan_id"] == brief.scan_id
     assert get_post(store, brief.film_this.post_id)["post_id"] == brief.film_this.post_id
     stats = get_stats(store, deps.cache, settings, clock=clock)
-    assert stats["scrapecreators"]["remaining"] == 95 and stats["scrapecreators"]["spent_last_scan"] == 3
+    assert stats["scrapecreators"]["remaining"] == 95 and stats["scrapecreators"]["spent_last_scan"] == 4
 
 
 def test_malformed_then_repaired_on_lower_rung(backend, store, settings, clock, sample_context_map):

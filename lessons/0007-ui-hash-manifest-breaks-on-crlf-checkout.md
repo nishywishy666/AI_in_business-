@@ -27,3 +27,9 @@ without a venv (plans 0010/0011 say "not run") that were never executed.
 Hash text fixtures after normalising line endings, or add a `.gitattributes` `eol=lf` rule for any
 folder pinned by hash. Any test written without being run must be run before it is marked Done in
 its plan — `uv run pytest` is the gate, not `node --check`.
+
+## Recurred (2026-09-14, plan 0013)
+Same root cause, different symptom: exact-substring edits scripted with `\n` in the search text found zero matches,
+because every tracked file is CRLF on disk here. `grep -q $'\r'` in Git Bash even reported them as LF. Any scripted
+edit in this checkout must normalise `\r\n` → `\n` before matching and write back with the file's own newline
+(`dashboard/ui.py::render_page` already does exactly this for its template anchors).

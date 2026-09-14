@@ -83,7 +83,11 @@ class ScrapeCreatorsClient:
         })
 
     # ---- fetch ------------------------------------------------------------------------
-    def fetch(self, endpoint: Endpoint | str, params: dict[str, Any] | None = None) -> ScrapeResult:
+    def fetch(self, endpoint: Endpoint | str, params: dict[str, Any] | None = None, *,
+              fresh: bool = False) -> ScrapeResult:
+        """`fresh=True` skips the 48h cache *read* (the entry is still written), so an owner-triggered
+        "Refresh now" is a real pull rather than the same cached body (plan 0013). Cron scans keep
+        the default and never spend on a URL fetched in the last 48h (spec §10.2)."""
         if isinstance(endpoint, str):
             endpoint = endpoint_by_key(endpoint)
         params = {k: v for k, v in (params or {}).items() if v is not None}
@@ -93,7 +97,7 @@ class ScrapeCreatorsClient:
         cache_path = self.store.paths.scrape_cache_entry(request_hash)
         now = self.clock()
 
-        cached = self.store.get(cache_path)
+        cached = None if fresh else self.store.get(cache_path)
         if cached and (parse_iso(cached.get("expires_at")) or now) > now:
             return ScrapeResult(endpoint, cached.get("body"), True, 0, cached.get("credits_remaining"), request_hash)
 

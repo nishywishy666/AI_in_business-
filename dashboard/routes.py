@@ -7,7 +7,7 @@
     POST /api/dashboard/gaps/{key}/review          {status: approved|dismissed, answer?}
     POST /api/dashboard/settings                   {notifPrefs?, packetConfirmed?}
     GET  /api/dashboard/trends                     UI-shaped trend cards
-    POST /api/dashboard/trends/refresh             re-read the brief now, bypassing the daily cache
+    POST /api/dashboard/trends/refresh             pull every platform live now, then re-read the brief
     POST /api/dashboard/trends/{post_id}/save      Like if needed → angle 0 → saved script
     POST /api/overlord/ask                         {question}
     GET|POST /api/jobs/{name}                      Vercel Cron targets (Bearer CRON_SECRET)
@@ -180,9 +180,10 @@ def build_router(ctx: DashboardContext) -> APIRouter:
 
     @router.post("/api/dashboard/trends/refresh")
     def refresh_trends() -> JSONResponse:
-        """"Refresh now" on the Marketing screen: rebuild the marketing deps and re-read Firestore
-        instead of the once-a-day local cache. A read only — no scrape, no credit spent."""
-        return JSONResponse(ctx.marketing.trends(force=True))
+        """"Refresh now" on the Marketing screen (plan 0013): a full live pull of TikTok, Instagram,
+        Facebook and YouTube Shorts through ScrapeCreators, bypassing the 48h request cache, then the
+        rebuilt brief. Spends one credit per platform; the bridge confirms with the owner first."""
+        return JSONResponse(ctx.marketing.pull_now())
 
     @router.post("/api/dashboard/trends/{post_id}/save")
     def save_trend(post_id: str) -> JSONResponse:
@@ -199,8 +200,10 @@ def build_router(ctx: DashboardContext) -> APIRouter:
         today = an.summary_for_prompt(an.compute(snapshot, ctx.settings, period_key="today", now=now))
         week = an.summary_for_prompt(an.compute(snapshot, ctx.settings, period_key="week", now=now))
         setup = present.setup_payload(ctx.reader, ctx.business_id, ctx.settings, now=now)
+        knowledge = present.knowledge_payload(ctx.reader, ctx.business_id, snapshot, ctx.settings, now=now)
+        knowledge["lookup"] = present.knowledge_lookup(question, ctx.reader, ctx.business_id)
         packet = overlord.build_packet(business_name=setup["businessName"], voice_today=today, voice_week=week,
-                                       marketing=ctx.marketing.summary())
+                                       marketing=ctx.marketing.summary(), knowledge=knowledge)
         result = await overlord.answer(question, packet, transport=ctx.overlord_transport())
         return JSONResponse(result)
 
