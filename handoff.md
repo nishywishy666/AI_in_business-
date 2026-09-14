@@ -28,7 +28,7 @@
 
 ## 2. What this is
 
-A Python 3.11 **library** (`marketing_radar/`) the parent dashboard imports. Once a day it reads the parent's questionnaire from Firestore, every 2 days it scrapes TikTok + Instagram + one alternating secondary source via ScrapeCreators (≤3 credits, 100-credit lifetime budget, 15-credit reserve), always adds free YouTube/Reddit/Trends, scores with the AIOS formula, makes **one** Gemini free-tier call to write a `ScanBrief`, and exposes Like → 3 angles → script, a grounded chat, usage snapshot + alerts, and read-only overlord helpers. All writes land under `users/{uid}/marketingRadar/**`; nothing else in Firebase is touched. No Anthropic key anywhere.
+A Python 3.11 **library** (`marketing_radar/`) the parent dashboard imports. Once a day it reads the parent's questionnaire from Firestore, every 2 days (or whenever the owner clicks Refresh now) it scrapes TikTok + Instagram + Facebook + YouTube Shorts via ScrapeCreators (4 credits per pull — plan 0013 overrode the spec's 3-call cap; 100-credit lifetime budget, 15-credit reserve for transcripts), always adds free YouTube/Reddit/Trends, scores with the AIOS formula, makes **one** Gemini free-tier call to write a `ScanBrief`, and exposes Like → 3 angles → script, a grounded chat, usage snapshot + alerts, and read-only overlord helpers. All writes land under `users/{uid}/marketingRadar/**`; nothing else in Firebase is touched. No Anthropic key anywhere.
 
 ## 3. How to run
 
@@ -79,7 +79,7 @@ tests/                           one file per layer; fixtures/ holds recorded-sh
 |---|---|---|
 | 1 | write outside namespace raises | `test_paths_firebase.py::test_acceptance_1_*` |
 | 2 | daily pull no-op / torn cache refetch | `test_cache_daily_pull.py::test_acceptance_2_*` |
-| 3 | ≤3 live calls; identical URL in 48h = 0 credits | `test_scraper_client.py::test_acceptance_3_*`, `test_scan_rotation.py::test_acceptance_3_*` |
+| 3 | one live call per platform (4 — owner override of the ≤3 cap, plan 0013); identical URL in 48h = 0 credits unless the owner pulls fresh | `test_scraper_client.py::test_acceptance_3_*`, `test_scan_rotation.py::test_acceptance_3_*` |
 | 4 | credit-balance never from get_stats | `test_scraper_client.py::test_acceptance_4_*`, `test_usage_alerts.py::test_get_stats_*` |
 | 5 | midrank velocities match score-ideas.py | `test_scoring.py::test_acceptance_5_*` + golden test against the real file |
 | 6 | no producibility term | `test_scoring.py::test_acceptance_6_*` |

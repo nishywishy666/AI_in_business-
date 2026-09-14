@@ -21,6 +21,7 @@ from services.voice.sinks import LocalJsonlSink
 from services.voice.tools import BusinessReader, FirestoreReader, JsonBusinessReader
 
 from .marketing import MarketingHub
+from .packet import PacketStore
 from .records import FirestoreSource, LocalJsonlSource, RecordSource
 from .routes import DashboardContext, build_router
 from .settings import DashboardSettings, get_settings
@@ -40,7 +41,15 @@ def make_source(config: VoiceConfig, deps: PipelineDeps, *, settings: DashboardS
         from services.common.firestore import make_client
 
         client = make_client(config)
-    return FirestoreSource(client, BusinessPaths(config.business_id))
+    # One pull a day into a packet on disk (dashboard/packet.py); DASHBOARD_PACKET_HOURS tunes it,
+    # DASHBOARD_PACKET_DIR says where, and 0 hours means "always live" for debugging.
+    try:
+        hours = float(os.environ.get("DASHBOARD_PACKET_HOURS", "24") or 24)
+    except ValueError:  # a typo in the env is not a reason to refuse to start
+        log.warning("DASHBOARD_PACKET_HOURS is not a number; using 24")
+        hours = 24.0
+    packet = PacketStore(config.business_id, max_age_hours=hours)
+    return FirestoreSource(client, BusinessPaths(config.business_id), packet=packet)
 
 
 def make_reader(config: VoiceConfig, deps: PipelineDeps, *, settings: DashboardSettings) -> BusinessReader:

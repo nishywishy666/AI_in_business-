@@ -83,6 +83,9 @@
       "rgba(var(--dc-glow),calc(var(--dc-glow-intensity) * .35)) 32%,transparent 62%);" +
       "-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;" +
       "mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}" +
+      // a dialog backdrop is positioned but has no z-index, so the wash would paint over it and
+      // tint the text inside; it steps aside while one is open
+      "body:has(.dialog-backdrop) .dc-spotlight{opacity:0 !important}" +
       ".dc-spotlight{position:fixed;width:680px;height:680px;border-radius:50%;pointer-events:none;z-index:5;" +
       "opacity:0;transform:translate(-50%,-50%);transition:opacity .28s ease;background:radial-gradient(circle," +
       "rgba(var(--dc-glow),.10) 0%,rgba(var(--dc-glow),.05) 25%,rgba(var(--dc-glow),.02) 45%,transparent 70%)}" +
@@ -179,6 +182,8 @@
       // ---- motion: modals, floating popups, sidebar collapse, expanded call row ----
       // Entry is pure CSS (the node mounts, the animation plays once). Exit needs the JS wrappers at
       // the bottom of this file, which hold the node for one beat with .dc-closing before React drops it.
+      ".dc-watch{transition:filter .2s ease}.dc-watch:hover{filter:brightness(1.12)}" +
+      ".dc-watch:hover span{background:var(--color-accent) !important}" +
       "@keyframes dc-fade{from{opacity:0}to{opacity:1}}" +
       "@keyframes dc-dialog-in{from{opacity:0;transform:translateY(14px) scale(.965)}to{opacity:1;transform:none}}" +
       "@keyframes dc-menu-in{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}" +
@@ -284,7 +289,7 @@
     { label: "Profile settings", sub: "Your details, plan and usage", screen: "profile", keys: "account billing plan minutes owner timezone" },
     { label: "My saves", sub: "Trends you saved to film", screen: "marketing", keys: "saved bookmarks scripts", act: "saves" },
     { label: "My likes", sub: "Trends you liked", screen: "marketing", keys: "liked hearts", act: "likes" },
-    { label: "Refresh trends now", sub: "Re-read the latest scan", screen: "marketing", keys: "reload update rescan", act: "refresh" },
+    { label: "Refresh trends now", sub: "Pull fresh trends from every platform", screen: "marketing", keys: "reload update rescan pull scrape", act: "refresh" },
     { label: "Ask the Overlord", sub: "Questions across calls, bookings and trends", keys: "chat assistant help ask", act: "overlord" }
   ];
   function searchMatches(query) {
@@ -312,6 +317,7 @@
     urgent: "background:#a03a3a", warn: "background:var(--color-accent-500)",
     info: "background:var(--color-accent)", ok: "background:#3a7a4a"
   };
+  var POLL_MS = 300000;  // 5 minutes
   var MAX_CHAT_RETRIES = 4;  // ~4 cooldowns before the question gives up and reports back
   var PLACEHOLDER_TREND = { id: "_none", niche: true, platform: "", score: 0, title: "No scan yet", why: "" };
   var BAND_STYLE = {
@@ -324,9 +330,10 @@
     kpiBookings: "–", kpiCovers: "–", kpiCalls: "–", kpiContainment: "–", kpiContainmentMeta: "loading…",
     kpiOutside: "–", kpiOutsidePct: "–", kpiOutsideMeta: "", menuMetaLabel: "loading…", menuCountLabel: "Menu",
     dataSourceLabel: "loading…", usageMinutesLabel: "…", usageMinutesPct: 0, ownerName: "Owner", ownerSub: "",
-    businessLocation: "", headerBadge: "Connecting…",
+    businessLocation: "", headerBadge: "", headerBadgeStyle: "display:none",
     refreshTrendsLabel: "Refresh now", refreshTrendsStyle: "padding:3px 10px;font-size:11px;white-space:nowrap;flex:none",
-    refreshTrends: function () {},
+    refreshTrends: function () {}, refreshTrendsTitle: "Pull fresh trends from every platform now",
+    callbackModal: null, closeCallbackModal: function () {},
     overlordDraft: "", overlordPlaceholder: "Ask about calls, bookings or trends…",
     setOverlordDraft: function () {}, overlordKeyDown: function () {}, sendOverlord: function () {},
     chartRange7: true, chartRange30: false, setChartRange7: function () {}, setChartRange30: function () {},
@@ -368,7 +375,10 @@
     this.__live = { analytics: {}, angles: {}, pending: {} };
     var self = this;
     this.__refresh();
-    this.__timer = setInterval(function () { self.__refresh(); }, 60000);
+    // Every read the bootstrap makes is paid once per tick, all day. Nothing on this dashboard
+    // changes minute to minute, and the things that do — a sent message, a save, Refresh now —
+    // already refresh themselves, so the background poll is deliberately slow.
+    this.__timer = setInterval(function () { self.__refresh(); }, POLL_MS);
     // Click-out for the profile menu. The menu and its trigger share one positioned parent, so
     // "outside" is anything not inside that parent — which keeps the trigger's own click a plain
     // toggle instead of an open-then-immediately-close.
@@ -506,10 +516,12 @@
     // "Refresh now" beside the trend count (anchor patched in by dashboard/ui.py). Bound on both
     // paths, because the case it exists for is the one where no data has loaded yet.
     var refreshing = !!(live && live.refreshing);
-    vals.refreshTrendsLabel = refreshing ? "Refreshing…" : "Refresh now";
+    vals.refreshTrendsLabel = refreshing ? "Pulling…" : "Refresh now";
     vals.refreshTrendsStyle = "padding:5px 14px;font-size:11px;white-space:nowrap;flex:none;margin-left:auto"
       + (refreshing ? ";opacity:.6;cursor:progress" : "");
     vals.refreshTrends = function () { self.refreshTrends(); };
+    vals.refreshTrendsTitle = this.__pullTitle();
+    vals.closeCallbackModal = function () { self.closeCallbackModal(); };
     // Overlord chat box (anchor patched in by dashboard/ui.py) — bound on both paths so the panel is
     // usable before the first bootstrap lands.
     vals.overlordDraft = this.state.overlordDraft || "";
@@ -531,7 +543,7 @@
     });
     if (!d) {
       vals.platformGroups = [];
-      vals.trendCountLabel = refreshing ? "Refreshing trends…"
+      vals.trendCountLabel = refreshing ? "Pulling fresh trends…"
         : (live && (live.refreshError || live.error) ? "Backend unavailable: " + (live.refreshError || live.error) : "Loading…");
       vals.showMoreLabel = ""; vals.callLogCountLabel = "Loading calls…";
       vals.trendsLoading = !(live && live.error);
@@ -552,7 +564,9 @@
       dataSourceLabel: a.dataSourceLabel + (a.freshness.stale ? " · stale" : ""),
       usageMinutesLabel: d.usage.label, usageMinutesPct: d.usage.pct,
       ownerName: d.setup.ownerName, ownerSub: d.setup.ownerSub, businessLocation: d.setup.businessLocation,
-      headerBadge: live.error ? "Refresh failed · showing last data" : (d.business.demo ? "Demo data" : "Live"),
+      // the top-right tag only appears when something is wrong (plan 0013: no "Demo data" label)
+      headerBadge: live.error ? "Refresh failed · showing last data" : "",
+      headerBadgeStyle: live.error ? "white-space:nowrap;flex:none" : "display:none",
       profileFields: d.setup.profileFields
     });
     if (s.screen === "overview") vals.pageTitle = "Welcome, " + d.setup.firstName;
@@ -590,6 +604,12 @@
     vals.callLogCountLabel = "Showing " + (vals.calls || []).length + " of " + d.calls.length + " " + ov.callLogCountLabel;
     vals.voiceOpsTiles = a.voiceOpsTiles;
 
+    // ---- callbacks: Open shows the full number and the call's transcript (plan 0013) ----
+    vals.callbacks = (vals.callbacks || []).map(function (cb) {
+      return Object.assign({}, cb, { onOpen: function () { self.openCallback(cb.id); } });
+    });
+    vals.callbackModal = this.__callbackModal(vals.callbacks, d);
+
     // ---- analytics ----
     vals.impactTiles = a.impactTiles;
     vals.voiceOpsBandTiles = a.voiceOpsBandTiles.map(function (t) {
@@ -610,9 +630,12 @@
     }
     vals.trendsLoading = !!refreshing;
     vals.trendsLoadingLabel = "Toasting your trends";
-    if (refreshing) vals.trendCountLabel = "Refreshing trends…";
+    if (refreshing) vals.trendCountLabel = "Pulling fresh trends…";
     else if (live.refreshError) vals.trendCountLabel = vals.trendCountLabel + " · refresh failed: " + live.refreshError;
     this.__marketingStats(vals, d.trends);
+    vals.platformGroups = (vals.platformGroups || []).map(function (pg) {
+      return Object.assign({}, pg, { items: (pg.items || []).map(watchable) });
+    });
     if (vals.scriptModalTrend) {
       var t = live.angles[s.scriptModalTrendId];
       var card = d.trends.items.filter(function (x) { return x.id === s.scriptModalTrendId; })[0];
@@ -648,7 +671,8 @@
     stats.push({ label: "Saved", value: String(t.savedCount || 0), style: cell });
     if (t.nextScanAt) stats.push({ label: "Next scan", value: shortWhen(t.nextScanAt), style: cell });
     vals.marketingStats = stats;
-    vals.marketingStatsNote = t.platformsNote || "";
+    var live = this.__live;
+    vals.marketingStatsNote = [t.platformsNote, live && live.pullNote].filter(Boolean).join(" ");
   };
 
   // ---- Analytics: the Custom period's calendar ----
@@ -1029,7 +1053,7 @@
         text: live && live.error ? "I can't reach your dashboard data right now (" + live.error + "). I'll answer as soon as it's back."
           : "Your data hasn't loaded yet — give me a moment and ask again." };
     }
-    if (live.refreshing) return { ready: true, marketing: false, text: "I'm still analysing the latest scan — ask me again in a moment." };
+    if (live.refreshing) return { ready: true, marketing: false, text: "I'm pulling fresh trends right now — ask me again in a moment." };
     var t = d.trends;
     if (t.empty) {
       return { ready: true, marketing: false,
@@ -1088,14 +1112,23 @@
       .then(function (r) { self.__replaceLast("overlordThread", r.answer); })
       .catch(function (e) { self.__replaceLast("overlordThread", "I can't reach the records right now: " + errText(e)); });
   };
-  // Manual re-read of the trend scan: the bridge otherwise only polls every 60s, and a brief that
-  // failed to build once stays failed until the server is asked again. Read-only on the backend.
+  // "Refresh now" is a real pull (plan 0013): the server fetches TikTok, Instagram, Facebook and
+  // YouTube Shorts live through ScrapeCreators, rebuilds the brief, and returns the new list. That
+  // spends credits, so when the agent is online the owner confirms first.
   P.refreshTrends = function () {
     var self = this, live = this.__live || (this.__live = { analytics: {}, angles: {}, pending: {} });
     if (live.refreshing) return;
-    live.refreshing = true; live.refreshError = null; this.setState({});
-    post("/api/dashboard/trends/refresh").then(function () {
-      return self.__refresh();  // the forced read already warmed the cache; pull the whole payload
+    var t = live.data && live.data.trends;
+    if (t && !t.offline && t.pullCost && typeof confirm === "function") {
+      var balance = t.credits && typeof t.credits.remaining === "number" ? t.credits.remaining + " left" : "balance unknown";
+      var names = listPlatforms(t.pullPlatforms && t.pullPlatforms.length ? t.pullPlatforms : ALL_PLATFORMS);
+      if (!confirm("Pull fresh trends now?\n\nThis calls " + names + " through ScrapeCreators and spends about "
+        + t.pullCost + " credits (" + balance + "). Credits never reset.")) return;
+    }
+    live.refreshing = true; live.refreshError = null; live.pullNote = null; this.setState({});
+    post("/api/dashboard/trends/refresh").then(function (r) {
+      live.pullNote = pullNote(r && r.pull);
+      return self.__refresh();  // the pull already rebuilt the brief; fetch the whole payload
     }).catch(function (e) {
       live.refreshError = errText(e);
     }).then(function () { live.refreshing = false; self.setState({}); });
@@ -1198,6 +1231,81 @@
     post("/api/dashboard/settings", { packetConfirmed: true }).catch(function (e) { console.error("[dashboard] settings", e); });
   };
 
+
+  // ---- plan 0013: watch links, the callback dialog, and the live pull ----
+  var CALLER_TAG = "background:var(--color-neutral-800);color:var(--color-neutral-200)";
+  var AGENT_TAG = "background:var(--color-accent-800);color:var(--color-accent-100)";
+  var ALL_PLATFORMS = ["TikTok", "Instagram", "Facebook", "YouTube Shorts"];
+  function listPlatforms(names) {
+    var list = (names || []).slice();
+    if (list.length < 2) return list.join("");
+    return list.slice(0, -1).join(", ") + " and " + list[list.length - 1];
+  }
+  // Every card links to the post it came from: the thumbnail box (with the packet's thumbnail as its
+  // background when there is one) and a ▶ Watch button both open the URL in a new tab.
+  function watchable(t) {
+    var url = t.url || "";
+    var thumb = "height:84px;border-radius:var(--radius-sm);background-color:var(--color-neutral-900);display:flex;"
+      + "align-items:center;justify-content:center;font-size:11px;color:var(--color-neutral-600);cursor:"
+      + (url ? "pointer" : "default")
+      + (t.thumbnail ? ";background-image:url(" + JSON.stringify(String(t.thumbnail)) + ");background-size:cover;background-position:center" : "");
+    return Object.assign({}, t, {
+      onWatch: function () { if (url) window.open(url, "_blank", "noopener"); },
+      watchTitle: url ? "Open the original video in a new tab: " + url : "This post has no link",
+      watchLabel: url ? "▶ Watch on " + (t.platform || "the platform") : "No video link",
+      watchLabelStyle: "font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(0,0,0,.55);color:#fff;pointer-events:none",
+      thumbStyle: thumb,
+      watchStyle: url ? "" : "opacity:.5;cursor:not-allowed"
+    });
+  }
+  function reasonLabel(reason) { return String(reason || "other").replace(/_/g, " "); }
+  function pullNote(pull) {
+    if (!pull) return null;
+    if (!pull.ran) return pull.note || null;
+    var bits = ["Pulled " + listPlatforms(pull.platforms && pull.platforms.length ? pull.platforms : ALL_PLATFORMS) + " just now"];
+    if (typeof pull.liveCalls === "number") bits.push(pull.liveCalls + " live call" + (pull.liveCalls === 1 ? "" : "s"));
+    if (typeof pull.creditsSpent === "number") bits.push(pull.creditsSpent + " credit" + (pull.creditsSpent === 1 ? "" : "s") + " spent");
+    if (pull.note) bits.push(String(pull.note));
+    return bits.join(" · ") + ".";
+  }
+  P.__pullTitle = function () {
+    var d = this.__live && this.__live.data, t = d && d.trends;
+    var names = listPlatforms(t && t.pullPlatforms && t.pullPlatforms.length ? t.pullPlatforms : ALL_PLATFORMS);
+    var cost = t && t.pullCost ? " (" + t.pullCost + " scan credits)" : "";
+    return "Pull fresh trends from " + names + " now" + cost;
+  };
+  P.openCallback = function (id) { this.setState({ callbackModalId: id }); };
+  P.closeCallbackModal = function () { this.setState({ callbackModalId: null }); };
+  // The dialog behind Open: the caller's full number and the transcript of the call that produced the
+  // callback, both already in the bootstrap payload (callbacks carry callId; calls carry transcripts).
+  P.__callbackModal = function (rows, d) {
+    var self = this, id = this.state.callbackModalId;
+    if (!id) return null;
+    var cb = (rows || []).filter(function (r) { return r.id === id; })[0];
+    if (!cb) return null;
+    var call = (d.calls || []).filter(function (c) { return c.id === cb.callId; })[0];
+    var transcript = ((call && call.transcript) || []).map(function (line) {
+      return Object.assign({}, line, { speakerStyle: line.speaker === "Caller" ? CALLER_TAG : AGENT_TAG });
+    });
+    return {
+      name: cb.fullName || cb.name,
+      priority: cb.priority + " priority", status: cb.status, statusTagClass: cb.statusTagClass,
+      reasonLabel: reasonLabel(cb.reason),
+      fields: [
+        { label: "Phone", value: cb.number },
+        { label: "Logged", value: cb.time },
+        { label: "Asked", value: cb.question },
+        { label: "Call", value: call ? call.time + " · " + call.duration + " · " + call.outcome : "not in the loaded records" }
+      ],
+      transcript: transcript,
+      transcriptHeading: call ? "Transcript · " + call.route + " call" : "Transcript",
+      transcriptEmpty: transcript.length === 0,
+      transcriptNote: call ? "No transcript lines were stored for this call." : "The call this callback came from is not in the loaded records.",
+      showDoneButton: cb.status !== "done",
+      onMarkDone: function () { self.closeCallbackModal(); self.markCallbackDone(cb.id); }
+    };
+  };
+
   // ---- exit animations ---------------------------------------------------------------------------
   // React unmounts a closed popup on the very next render, so there is nothing left to animate out.
   // These wrappers hold it for one beat: tag the live node with .dc-closing, let the CSS above play,
@@ -1224,6 +1332,7 @@
   wrapClose("closeSummaryModal", ".dialog-backdrop");
   wrapClose("closeSavedLikedModal", ".dialog-backdrop");
   wrapClose("closeScriptModal", ".dialog-backdrop");
+  wrapClose("closeCallbackModal", ".dialog-backdrop");
   wrapClose("saveScriptToLibrary", ".dialog-backdrop");
   wrapClose("toggleOverlord", ".dc-overlord-panel", function (s) { return s.overlordOpen; });
   wrapClose("toggleProfileMenu", ".dc-profile-menu", function (s) { return s.profileMenuOpen; });

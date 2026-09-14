@@ -83,6 +83,9 @@ class ChatSession:
                 # Every free rung is cooling off from a per-minute rate limit, not out of quota. The
                 # question stays open — `retry_after` tells the caller when to ask it again — so this
                 # text is only the fallback for a caller that ignores it, and is not persisted.
+                # refresh first: this turn moved the ladder's counters, and the status line above
+                # the chat reads them from the stored snapshot
+                refresh_snapshot(deps.store, deps.settings, deps.clock, cache=deps.cache)
                 return ChatReply(text=f"Still thinking — every free model is busy this minute. Your latest brief{have}",
                                  thread_id=self.thread_id, actions=[], scan_id=brief.scan_id if brief else None,
                                  retry_after=max(5.0, min(wait, 900.0)))

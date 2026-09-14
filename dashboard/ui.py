@@ -43,8 +43,9 @@ PATCHES: list[tuple[str, str]] = [
     ('<div style="font-size:12px;color:var(--color-neutral-500)">Owner · Oakleigh VIC</div>', '<div style="font-size:12px;color:var(--color-neutral-500)">{{ ownerSub }}</div>'),
     ('<div style="font-size:11px;color:var(--color-neutral-400);white-space:nowrap;flex:1">Oakleigh, VIC</div>',
      '<div style="font-size:11px;color:var(--color-neutral-400);white-space:nowrap;flex:1">{{ businessLocation }}</div>'),
+    # The top-right tag no longer says "Demo data" (plan 0013): it is hidden unless a refresh failed.
     ('<span class="tag tag-outline" style="white-space:nowrap;flex:none">Live prototype</span>',
-     '<span class="tag tag-outline" style="white-space:nowrap;flex:none">{{ headerBadge }}</span>'),
+     '<span class="tag tag-outline" style="{{ headerBadgeStyle }}">{{ headerBadge }}</span>'),
     # Marketing: the scan's own numbers (credits, posts, next scan) belong in one strip above the
     # agent, not strung along the count line — which goes back to saying only how many are shown.
     # "Refresh now" lives in that strip, pushed to its right edge.
@@ -63,13 +64,13 @@ PATCHES: list[tuple[str, str]] = [
      '                    <div style="font-family:var(--font-heading);font-weight:856;font-size:16px;line-height:1.25;white-space:nowrap">{{ ms.value }}</div>\n'
      '                  </div>\n'
      '                </sc-for>\n'
-     '                <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="Re-read the latest trend scan now">{{ refreshTrendsLabel }}</button>\n'
+     '                <button class="btn btn-secondary" style="{{ refreshTrendsStyle }}" onClick="{{ refreshTrends }}" title="{{ refreshTrendsTitle }}">{{ refreshTrendsLabel }}</button>\n'
      '              </div>\n'
      '              <sc-if value="{{ marketingStatsNote }}">\n'
      '                <div style="font-size:11px;color:var(--color-neutral-500);line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ marketingStatsNote }}</div>\n'
      '              </sc-if>\n'
      '            </div>\n'
-     '            <div class="dc-chat-row" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap">\n'
+     '            <div class="dc-mkt-row" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap">\n'
      '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column;flex:1 1 260px;min-width:0">'),
     # Marketing: a toastie orbiting a ring while the scan loads, in place of an empty column.
     ('<sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">',
@@ -228,6 +229,66 @@ PATCHES: list[tuple[str, str]] = [
      '          <input class="input" placeholder="{{ overlordPlaceholder }}" value="{{ overlordDraft }}" onInput="{{ setOverlordDraft }}" onKeyDown="{{ overlordKeyDown }}">\n'
      '          <button class="btn btn-primary btn-icon" onClick="{{ sendOverlord }}">→</button>\n'
      '        </div>'),
+    # Callbacks (plan 0013): every card gets an Open button, and a dialog shows the caller's full
+    # number (the card no longer masks it either — present.py) plus the transcript of the call that
+    # produced the callback, read from the bootstrap's calls list.
+    ('                  <span class="tag {{ cb.statusTagClass }}" style="white-space:nowrap;flex:none">{{ cb.status }}</span>\n'
+     '                  <sc-if value="{{ cb.showDoneButton }}"><button class="btn btn-secondary" style="white-space:nowrap;flex:none" onClick="{{ cb.onMarkDone }}">Mark done</button></sc-if>\n',
+     '                  <span class="tag {{ cb.statusTagClass }}" style="white-space:nowrap;flex:none">{{ cb.status }}</span>\n'
+     '                  <button class="btn btn-primary" style="white-space:nowrap;flex:none;font-size:11px;padding:4px 12px" onClick="{{ cb.onOpen }}" title="Full number and the call transcript">Open</button>\n'
+     '                  <sc-if value="{{ cb.showDoneButton }}"><button class="btn btn-secondary" style="white-space:nowrap;flex:none" onClick="{{ cb.onMarkDone }}">Mark done</button></sc-if>\n'),
+    ('      </sc-if>\n'
+     '\n'
+     '      <!-- ============ ANALYTICS (Impact / Voice Ops / Insights) ============ -->',
+     '        <sc-if value="{{ callbackModal }}">\n'
+     '          <div class="dialog-backdrop" style="backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)" onClick="{{ closeCallbackModal }}">\n'
+     '            <div class="dialog" onClick="{{ stopPropagation }}" style="width:min(700px,100%)">\n'
+     '              <div class="dialog-title">Callback · {{ callbackModal.name }}</div>\n'
+     '              <div class="dialog-body">\n'
+     '                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">\n'
+     '                  <span class="tag tag-neutral">{{ callbackModal.priority }}</span>\n'
+     '                  <span class="tag {{ callbackModal.statusTagClass }}">{{ callbackModal.status }}</span>\n'
+     '                  <span class="tag tag-outline">{{ callbackModal.reasonLabel }}</span>\n'
+     '                </div>\n'
+     '                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px">\n'
+     '                  <sc-for list="{{ callbackModal.fields }}" as="cf" hint-placeholder-count="4">\n'
+     '                    <div style="background:var(--color-surface);border:1px solid var(--color-divider);border-radius:var(--radius-md);padding:9px 11px;min-width:0">\n'
+     '                      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--color-neutral-500)">{{ cf.label }}</div>\n'
+     '                      <div style="font-size:14px;margin-top:2px;overflow-wrap:anywhere">{{ cf.value }}</div>\n'
+     '                    </div>\n'
+     '                  </sc-for>\n'
+     '                </div>\n'
+     '                <div style="font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--color-neutral-500);margin-bottom:8px">{{ callbackModal.transcriptHeading }}</div>\n'
+     '                <div style="display:flex;flex-direction:column;gap:8px;max-height:44vh;overflow:auto">\n'
+     '                  <sc-for list="{{ callbackModal.transcript }}" as="line" hint-placeholder-count="4">\n'
+     '                    <div style="display:flex;align-items:flex-start;gap:10px">\n'
+     '                      <span style="font-size:11px;color:var(--color-neutral-500);width:34px;flex:none;padding-top:3px">{{ line.ts }}</span>\n'
+     '                      <span style="{{ line.speakerStyle }}" class="tag">{{ line.speaker }}</span>\n'
+     '                      <span style="font-size:13px;opacity:.9;flex:1">{{ line.text }}</span>\n'
+     '                    </div>\n'
+     '                  </sc-for>\n'
+     '                  <sc-if value="{{ callbackModal.transcriptEmpty }}">\n'
+     '                    <div style="font-size:12px;color:var(--color-neutral-500)">{{ callbackModal.transcriptNote }}</div>\n'
+     '                  </sc-if>\n'
+     '                </div>\n'
+     '              </div>\n'
+     '              <div class="dialog-actions">\n'
+     '                <sc-if value="{{ callbackModal.showDoneButton }}"><button class="btn btn-secondary" onClick="{{ callbackModal.onMarkDone }}">Mark done</button></sc-if>\n'
+     '                <button class="btn btn-primary" onClick="{{ closeCallbackModal }}">Close</button>\n'
+     '              </div>\n'
+     '            </div>\n'
+     '          </div>\n'
+     '        </sc-if>\n'
+     '      </sc-if>\n'
+     '\n'
+     '      <!-- ============ ANALYTICS (Impact / Voice Ops / Insights) ============ -->'),
+    # Marketing cards (plan 0013): the thumbnail box links to the original post (with the packet's
+    # thumbnail behind it when there is one) and a ▶ Watch button joins Like / Save.
+    ('                      <div style="height:84px;border-radius:var(--radius-sm);background:var(--color-neutral-900);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--color-neutral-600)">video thumbnail</div>',
+     '                      <div class="dc-watch" style="{{ t.thumbStyle }}" onClick="{{ t.onWatch }}" title="{{ t.watchTitle }}"><span style="{{ t.watchLabelStyle }}">{{ t.watchLabel }}</span></div>'),
+    ('                        <button class="btn btn-secondary" style="{{ t.saveStyle }}" onClick="{{ t.onSave }}">{{ t.saveGlyph }} Save</button>\n',
+     '                        <button class="btn btn-secondary" style="{{ t.saveStyle }}" onClick="{{ t.onSave }}">{{ t.saveGlyph }} Save</button>\n'
+     '                        <button class="btn btn-secondary" style="{{ t.watchStyle }}" onClick="{{ t.onWatch }}" title="{{ t.watchTitle }}">▶ Watch</button>\n'),
 ]
 
 

@@ -29,6 +29,13 @@ DEFAULT_LADDER: tuple[LadderRung, ...] = (
 
 SCRAPECREATORS_BASE_URL = "https://api.scrapecreators.com"
 
+# Facebook is the one platform ScrapeCreators cannot search by keyword or trend: organic content only
+# comes from a page (`/v1/facebook/profile/reels`) or a group (`/v1/facebook/group/posts`), both keyed
+# by URL. When the questionnaire names no Facebook page or group, these public pages stand in so a
+# scan still has a Facebook column (plan 0013, owner override of spec §10.3). Override with
+# MARKETING_FACEBOOK_FALLBACK_URLS (comma-separated); an empty value disables the fallback.
+DEFAULT_FACEBOOK_FALLBACK_PAGES: tuple[str, ...] = ("https://www.facebook.com/buzzfeedtasty",)
+
 
 # Free tier only (spec §12.1). A configured ladder may never reach for one of these, whatever the
 # env says — running out of free quota means stepping down to a weaker free model, never paying.
@@ -81,8 +88,11 @@ class Settings:
     reserve: int = 15
     scan_interval_hours: int = 48
     scrape_cache_hours: int = 48
-    max_live_calls: int = 3
-    next_scan_estimated_cost: int = 3
+    # One live call per platform, every paid scan (TikTok, Instagram, Facebook, YouTube Shorts) — the
+    # owner's override of spec constraint 5's "max 3 live calls" (plan 0013).
+    max_live_calls: int = 4
+    next_scan_estimated_cost: int = 4
+    facebook_fallback_page_urls: tuple[str, ...] = DEFAULT_FACEBOOK_FALLBACK_PAGES
     youtube_daily_quota: int = 10_000
     draft_ttl_days: int = 14
     dedup_window_days: int = 14
@@ -99,6 +109,9 @@ class Settings:
                 _load()
             env = os.environ
         cache_root = env.get("MARKETING_RADAR_CACHE_DIR")
+        fallback_raw = env.get("MARKETING_FACEBOOK_FALLBACK_URLS")
+        fallback = (tuple(u.strip() for u in fallback_raw.split(",") if u.strip()) if fallback_raw is not None
+                    else DEFAULT_FACEBOOK_FALLBACK_PAGES)
         return cls(
             firebase_project_id=env.get("FIREBASE_PROJECT_ID") or None,
             firebase_credentials_json=env.get("FIREBASE_CREDENTIALS_JSON") or None,
@@ -110,6 +123,7 @@ class Settings:
             offline=_truthy(env.get("MARKETING_RADAR_OFFLINE")),
             ladder=parse_ladder_json(env.get("GEMINI_LADDER_JSON")),
             cache_root=Path(cache_root) if cache_root else None,
+            facebook_fallback_page_urls=fallback,
         )
 
     def context_path(self, user_id: str) -> str:
@@ -121,4 +135,4 @@ class Settings:
 
 
 __all__ = ["Settings", "LadderRung", "DEFAULT_LADDER", "parse_ladder_json", "is_free_model",
-           "PAID_MODEL_MARKERS", "field"]
+           "PAID_MODEL_MARKERS", "DEFAULT_FACEBOOK_FALLBACK_PAGES", "field"]

@@ -7,7 +7,8 @@
     POST /api/dashboard/gaps/{key}/review          {status: approved|dismissed, answer?}
     POST /api/dashboard/settings                   {notifPrefs?, packetConfirmed?}
     GET  /api/dashboard/trends                     UI-shaped trend cards
-    POST /api/dashboard/trends/refresh             re-read the brief now, bypassing the daily cache
+    POST /api/dashboard/records/refresh            re-pull the business tree (spends reads)
+    POST /api/dashboard/trends/refresh             pull every platform live now, then re-read the brief
     POST /api/dashboard/trends/{post_id}/save      Like if needed → angle 0 → saved script
     POST /api/overlord/ask                         {question}
     GET|POST /api/jobs/{name}                      Vercel Cron targets (Bearer CRON_SECRET)
@@ -67,7 +68,8 @@ class DashboardContext:
         setup = present.setup_payload(self.reader, self.business_id, self.settings, now=now)
         chart = an.daily_series(snapshot, self.settings, now=now)
         chart30 = an.daily_series(snapshot, self.settings, now=now, days=30)  # the 7D/30D toggle's other half
-        gaps = present.gap_rows(raw, self.settings, now=now)
+        analytics_out = present.analytics_payload(raw, self.settings, now=now)
+        gaps = analytics_out["gaps"]  # the same rows the analytics payload already built
         open_callbacks = [c for c in snapshot.callbacks if c.status not in ("done", "cancelled")]
         top_gap = gaps[0] if gaps else None
         quick_actions = [
@@ -81,7 +83,6 @@ class DashboardContext:
             {"icon": "▲", "label": "Top trend this week" if not trends["empty"] else "No trend scan yet",
              "sub": trends["items"][0]["title"] if trends["items"] else trends.get("note") or "", "tag": "Marketing", "screen": "marketing"},
         ]
-        analytics_out = present.analytics_payload(raw, self.settings, now=now)
         notifications = present.notifications(analytics_out=analytics_out, trends=trends,
                                               open_callbacks=open_callbacks, now=now)
         month_minutes = raw["minutes"]["month_to_date"]
@@ -180,9 +181,10 @@ def build_router(ctx: DashboardContext) -> APIRouter:
 
     @router.post("/api/dashboard/trends/refresh")
     def refresh_trends() -> JSONResponse:
-        """"Refresh now" on the Marketing screen: rebuild the marketing deps and re-read Firestore
-        instead of the once-a-day local cache. A read only — no scrape, no credit spent."""
-        return JSONResponse(ctx.marketing.trends(force=True))
+        """"Refresh now" on the Marketing screen (plan 0013): a full live pull of TikTok, Instagram,
+        Facebook and YouTube Shorts through ScrapeCreators, bypassing the 48h request cache, then the
+        rebuilt brief. Spends one credit per platform; the bridge confirms with the owner first."""
+        return JSONResponse(ctx.marketing.pull_now())
 
     @router.post("/api/dashboard/trends/{post_id}/save")
     def save_trend(post_id: str) -> JSONResponse:
@@ -199,15 +201,30 @@ def build_router(ctx: DashboardContext) -> APIRouter:
         today = an.summary_for_prompt(an.compute(snapshot, ctx.settings, period_key="today", now=now))
         week = an.summary_for_prompt(an.compute(snapshot, ctx.settings, period_key="week", now=now))
         setup = present.setup_payload(ctx.reader, ctx.business_id, ctx.settings, now=now)
+        knowledge = present.knowledge_payload(ctx.reader, ctx.business_id, snapshot, ctx.settings, now=now)
+        knowledge["lookup"] = present.knowledge_lookup(question, ctx.reader, ctx.business_id)
         packet = overlord.build_packet(business_name=setup["businessName"], voice_today=today, voice_week=week,
-                                       marketing=ctx.marketing.summary())
+                                       marketing=ctx.marketing.summary(), knowledge=knowledge)
         result = await overlord.answer(question, packet, transport=ctx.overlord_transport())
         return JSONResponse(result)
+
+    @router.post("/api/dashboard/records/refresh")
+    def refresh_records() -> JSONResponse:
+        """Pull the business tree again now, ignoring the packet's age. The only route that
+        deliberately spends Firestore reads — everything else serves the day's packet."""
+        refresh = getattr(ctx.source, "refresh", None)
+        if refresh is None:
+            ctx.source.invalidate()
+            snapshot = ctx.source.load()
+        else:
+            snapshot = refresh()
+        return JSONResponse({"asOf": snapshot.as_of.isoformat(), "calls": len(snapshot.calls),
+                             "callbacks": len(snapshot.callbacks), "source": snapshot.source})
 
     @router.get("/api/dashboard/ai")
     def ai_status() -> JSONResponse:
         """What the chats show above themselves — model in use and credits left."""
-        return JSONResponse(ctx.marketing.ai_status())
+        return JSONResponse(ctx.marketing.ai_status(fresh=True))
 
     @router.api_route("/api/jobs/{name}", methods=["GET", "POST"])
     def job(name: str, authorization: str | None = Header(None)) -> JSONResponse:
@@ -224,6 +241,17 @@ def build_router(ctx: DashboardContext) -> APIRouter:
 
 
 def run_job(ctx: DashboardContext, name: str) -> dict:
+    """Every marketing job changes what the dashboard should be showing, so each one drops the cached
+    reads on the way out. Without this a scan lands and the screen keeps saying "no scan yet" until
+    the cache ages out — which is exactly what the suite caught."""
+    try:
+        return _run_job(ctx, name)
+    finally:
+        if name.startswith("marketing-"):
+            ctx.marketing.forget()
+
+
+def _run_job(ctx: DashboardContext, name: str) -> dict:
     now = ctx.clock()
     if name == "marketing-scan":
         from marketing_radar.jobs.scan import run_paid_scan

@@ -138,3 +138,14 @@ def test_facebook_null_views_and_reaction_fallback(client, clock):
     first = packets[0]
     assert first.views is None and first.likes == 8400 and first.comments == 310 and first.shares == 1900
     assert "homeworkout" in first.hashtags
+
+
+def test_fresh_fetch_bypasses_the_cache_but_still_records_it(client, transport):
+    """`fresh=True` is the dashboard's "Refresh now" (plan 0013): a live call inside the 48h window,
+    and its body becomes the cache entry the next scheduled scan reuses."""
+    first = client.fetch("tiktok_trending")
+    cached = client.fetch("tiktok_trending")
+    fresh = client.fetch("tiktok_trending", fresh=True)
+    assert first.cached is False and cached.cached is True and fresh.cached is False
+    assert fresh.credits_charged == 1 and len(transport.calls) == 2
+    assert client.fetch("tiktok_trending").cached is True

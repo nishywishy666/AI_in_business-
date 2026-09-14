@@ -67,8 +67,13 @@ def test_bridge_defaults_cover_every_binding_the_patches_add():
     aliases = set()
     for _, replacement in ui.PATCHES:
         aliases |= set(re.findall(r'<sc-for[^>]*\sas="(\w+)"', replacement))
+    # rows the export already iterates (a patch may add a field to one, e.g. `cb.onOpen`)
+    aliases |= set(re.findall(r'<sc-for[^>]*\sas="(\w+)"', template))
     added = {b for b in added if b.split(".")[0] not in aliases}
-    assert added <= defaults, added - defaults
+    # an object-valued binding (`callbackModal.name`, like the export's own `summaryModalCall.time`) is
+    # covered by a default for its root
+    roots = {b.split(".")[0] for b in added}
+    assert roots <= defaults, roots - defaults
 
 
 def test_template_drift_is_loud():
