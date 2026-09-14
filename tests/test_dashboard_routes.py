@@ -43,14 +43,15 @@ def test_bootstrap_matches_the_template_contract(client):
     assert d["business"] == {"id": BUSINESS_ID, "name": "Uncle Tony", "timezone": "Australia/Melbourne", "source": "local", "demo": True}
     k = d["overview"]["kpis"]
     assert k["kpiCalls"] == "10" and k["kpiBookings"] == "3" and k["kpiCovers"] == "12"
-    assert k["kpiContainment"] == "60%" and k["kpiContainmentMeta"] == "6 of 10 calls, no callback requested"
+    # plan 0012: "Do you do delivery?" is answered from a fact now, so one fewer gap than the mockup's day
+    assert k["kpiContainment"] == "70%" and k["kpiContainmentMeta"] == "7 of 10 calls, no callback requested"
     assert d["overview"]["chart"]["labels"][-1] == "Today" and sum(d["overview"]["chart"]["values"]) == len(d["calls"]) == 26
     # the 7D/30D toggle reads both series out of one bootstrap; 30d covers at least what 7d does
     assert d["overview"]["chart30"]["days"] == 30 and len(d["overview"]["chart30"]["values"]) == 30
     assert sum(d["overview"]["chart30"]["values"]) >= sum(d["overview"]["chart"]["values"])
     assert {r["label"]: r["count"] for r in d["overview"]["routeMix"]["legend"]} == {"Booking": 3, "Question": 5, "Callback": 1, "Chitchat": 1}
     outcomes = [c["outcome"] for c in d["calls"] if c["startedAt"] >= d["period"]["start"]]
-    assert outcomes.count("Booked") == 3 and outcomes.count("Couldn't answer") == 3 and outcomes.count("Callback logged") == 1
+    assert outcomes.count("Booked") == 3 and outcomes.count("Couldn't answer") == 2 and outcomes.count("Callback logged") == 1
     assert d["analytics"]["dataSourceLabel"] == "Demo data" and d["analytics"]["freshness"]["staleAfterMinutes"] == 60
     assert d["setup"]["ownerName"] == "Tony Marino" and d["setup"]["menuCountLabel"] == "Menu · 5 items"
     assert d["setup"]["packetFields"][0] == {"label": "Hours", "value": "7:30am to 2:30pm Monday to Friday, and 8am to 3pm on Saturday. Closed Sunday."}
