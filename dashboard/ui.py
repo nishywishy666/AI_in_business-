@@ -69,7 +69,7 @@ PATCHES: list[tuple[str, str]] = [
      '                <div style="font-size:11px;color:var(--color-neutral-500);line-height:1.45;border-top:1px solid var(--color-divider);padding-top:8px">{{ marketingStatsNote }}</div>\n'
      '              </sc-if>\n'
      '            </div>\n'
-     '            <div class="dc-chat-row" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap">\n'
+     '            <div class="dc-mkt-row" style="display:flex;gap:14px;align-items:stretch;flex-wrap:wrap">\n'
      '            <div class="card elev-sm mkt-chat" style="display:flex;flex-direction:column;flex:1 1 260px;min-width:0">'),
     # Marketing: a toastie orbiting a ring while the scan loads, in place of an empty column.
     ('<sc-for list="{{ platformGroups }}" as="pg" hint-placeholder-count="3">',

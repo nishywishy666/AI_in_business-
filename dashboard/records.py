@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import logging
 import re
 import threading
 import time
@@ -18,6 +19,11 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from services.common.firestore import BusinessPaths
+
+from .packet import PACKET_VERSION, PacketStore, _json_default, upsert
+
+log = logging.getLogger(__name__)
+MIRROR_MAX_BYTES = 900_000  # Firestore caps a document at 1 MiB; leave room for the envelope
 
 UTC = dt.timezone.utc
 DASHBOARD_LOG = "_dashboard"
@@ -390,19 +396,46 @@ class LocalJsonlSource:
 
 class FirestoreSource:
     """Reads `businesses/{businessId}/**` with single-field queries only (no composite indexes to
-    deploy). Turns are read per call, capped by `call_limit`, and the whole snapshot is cached for
-    `cache_seconds` so a page refresh does not re-read the tree."""
+    deploy).
+
+    The tree is fetched **once a day** as a single packet of raw documents (`dashboard/packet.py`),
+    written to disk, and taken apart locally on every read after that. Before that, every snapshot
+    cost one Firestore read per document — a call's turns are a subcollection each, so ~275 reads a
+    load — and the dashboard's own 60s poll spent them all over again, exhausting a 50,000/day free
+    tier from one open tab in about three hours.
+
+    Writes patch the stored packet in place rather than discarding it, so closing a callback costs
+    one write and no reads. `refresh()` forces a new pull when the owner asks for one.
+
+    The packet is also mirrored to a single Firestore document. On Vercel the local copy lives in
+    /tmp, which is per-instance and gone on a cold start — without the mirror every new instance
+    would pay the full fetch again, which on a bad day is worse than having no cache at all. Reading
+    the mirror is **one** read instead of ~275.
+    """
 
     kind = "firestore"
 
     def __init__(self, client: Any, paths: BusinessPaths, *, call_limit: int = 400, cache_seconds: float = 15.0,
-                 clock=lambda: dt.datetime.now(UTC)) -> None:
+                 clock=lambda: dt.datetime.now(UTC), packet: PacketStore | None = None) -> None:
         self.client, self.paths, self.call_limit, self.cache_seconds, self.clock = client, paths, call_limit, cache_seconds, clock
+        # No packet unless one is handed in: a shared default path would let one process read back a
+        # packet another wrote, which is exactly what it looked like in the test suite.
+        self.packet = packet
         self._cached: tuple[float, Snapshot] | None = None
         self._lock = threading.Lock()
 
     def invalidate(self) -> None:
+        """Drop the in-process snapshot only. The packet on disk stands until it ages out, because
+        re-reading it is free and re-fetching it is not."""
         self._cached = None
+
+    def refresh(self) -> Snapshot:
+        """Pull the tree again now, whatever the packet's or the mirror's age — the manual path."""
+        with self._lock:
+            self._cached = None
+            if self.packet is not None:
+                self.packet.delete()
+            return self._reload()  # rewrites both the local packet and the mirror
 
     def _docs(self, collection: str, *, order_by: str | None = None, descending: bool = False,
               limit: int | None = None) -> list[tuple[str, dict]]:
@@ -419,53 +452,158 @@ class FirestoreSource:
         with self._lock:
             if self._cached and time.monotonic() - self._cached[0] < self.cache_seconds:
                 return self._cached[1]
-            snapshot = self._load()
-            self._cached = (time.monotonic(), snapshot)
-            return snapshot
+            if self.packet is None:
+                return self._reload()                    # no packet configured: straight through
+            now = self.clock()
+            stored = self.packet.read()
+            if stored is not None and self.packet.is_fresh(stored, now=now):
+                snapshot = self._unpack(stored)          # free: no reads at all
+                self._cached = (time.monotonic(), snapshot)
+                return snapshot
+            mirrored = self._read_mirror()               # one read, for a cold instance
+            if mirrored is not None and self.packet.is_fresh(mirrored, now=now):
+                self.packet.write(mirrored)              # keep it local for the rest of this instance
+                snapshot = self._unpack(mirrored)
+                self._cached = (time.monotonic(), snapshot)
+                return snapshot
+            return self._reload()
 
-    def _load(self) -> Snapshot:
-        calls: list[CallRecord] = []
+    def _reload(self) -> Snapshot:
+        """The only path that spends a full tree of reads. Caller holds the lock."""
+        packet = self._fetch_packet()
+        if self.packet is not None:
+            self.packet.write(packet)
+            self._write_mirror(packet)
+        snapshot = self._unpack(packet)
+        self._cached = (time.monotonic(), snapshot)
+        return snapshot
+
+    # ---- the Firestore-side mirror ---------------------------------------------------------------
+    @property
+    def _mirror_path(self) -> str:
+        return f"{self.paths.root}/dashboard/packet"
+
+    def _read_mirror(self) -> dict | None:
+        if self.packet is None:
+            return None
+        try:
+            snap = self.client.document(self._mirror_path).get()
+        except Exception as exc:  # the mirror is an optimisation; never let it break a load
+            log.warning("packet mirror unreadable: %s", exc)
+            return None
+        if not getattr(snap, "exists", False):
+            return None
+        doc = snap.to_dict() or {}
+        body = doc.get("packet")
+        if not isinstance(body, str):
+            return None
+        try:
+            packet = json.loads(body)
+        except ValueError:
+            return None
+        return packet if isinstance(packet, dict) and packet.get("version") == PACKET_VERSION else None
+
+    def _write_mirror(self, packet: dict) -> None:
+        """One document, one write a day. Skipped when the packet would not fit — Firestore caps a
+        document at 1 MiB, and a busy call log can exceed that."""
+        try:
+            body = json.dumps(packet, default=_json_default)
+        except (TypeError, ValueError) as exc:
+            log.warning("packet not serialisable for the mirror: %s", exc)
+            return
+        if len(body.encode("utf-8")) > MIRROR_MAX_BYTES:
+            log.info("packet too large to mirror (%d bytes); local cache only", len(body))
+            return
+        try:
+            self.client.document(self._mirror_path).set({"packet": body, "fetchedAt": packet.get("fetchedAt")})
+        except Exception as exc:
+            log.warning("could not mirror the packet: %s", exc)
+
+    # ---- the packet: raw documents in, one dict out ---------------------------------------------
+    def _fetch_packet(self) -> dict:
+        calls = []
         for call_id, doc in self._docs(self.paths.calls, order_by="startedAt", descending=True, limit=self.call_limit):
-            turns = [t for t in (TurnRecord.from_doc(d, call_id=call_id, turn_index=_int_or_none(i))
-                                 for i, d in self._docs(self.paths.turns(call_id))) if t]
+            calls.append({"id": call_id, "doc": doc,
+                          "turns": [{"id": i, "doc": d} for i, d in self._docs(self.paths.turns(call_id))]})
+        snap = self.client.document(self.paths.settings_doc).get()
+        return {
+            "version": PACKET_VERSION,
+            "businessId": self.paths.business_id,
+            "fetchedAt": self.clock().isoformat(),
+            "calls": calls,
+            "emailsSent": [key for key, _ in self._docs(self.paths.emails_sent)],
+            "bookings": [{"id": k, "doc": d} for k, d in self._docs(self.paths.bookings)],
+            "callbacks": [{"id": k, "doc": d} for k, d in self._docs(self.paths.callbacks)],
+            "unanswered": [{"id": k, "doc": d} for k, d in self._docs(self.paths.unanswered)],
+            "settings": (snap.to_dict() or {}) if getattr(snap, "exists", False) else {},
+        }
+
+    def _unpack(self, packet: dict) -> Snapshot:
+        """Break the packet down through the same `from_doc` parsing the live read used, so there is
+        one definition of what a call is."""
+        calls: list[CallRecord] = []
+        for row in packet.get("calls") or []:
+            call_id, doc = row.get("id"), row.get("doc") or {}
+            turns = [t for t in (TurnRecord.from_doc(t_row.get("doc") or {}, call_id=call_id,
+                                                     turn_index=_int_or_none(t_row.get("id")))
+                                 for t_row in row.get("turns") or []) if t]
             call = CallRecord.from_doc({**doc, "callId": doc.get("callId") or call_id}, turns)
             if call:
                 calls.append(call)
-        emails = {key for key, _ in self._docs(self.paths.emails_sent)}
-        bookings = [b for b in (BookingRecord.from_doc(k, {**d, "emailSent": k in emails})
-                                for k, d in self._docs(self.paths.bookings)) if b]
-        callbacks = [c for c in (CallbackRecord.from_doc(k, d) for k, d in self._docs(self.paths.callbacks)) if c]
+        emails = set(packet.get("emailsSent") or [])
+        bookings = [b for b in (BookingRecord.from_doc(r["id"], {**(r.get("doc") or {}), "emailSent": r["id"] in emails})
+                                for r in packet.get("bookings") or []) if b]
+        callbacks = [c for c in (CallbackRecord.from_doc(r["id"], r.get("doc") or {})
+                                 for r in packet.get("callbacks") or []) if c]
         reviews = {}
-        for key, doc in self._docs(self.paths.unanswered):
+        for row in packet.get("unanswered") or []:
+            key, doc = row["id"], row.get("doc") or {}
             reviews[key] = ReviewRecord(key=key, status=str(doc.get("status") or "dismissed"), answer=doc.get("answer"),
                                         question=doc.get("question"), reviewed_at=parse_dt(doc.get("reviewedAt")))
-        snap = self.client.document(self.paths.settings_doc).get()
-        settings = (snap.to_dict() or {}) if getattr(snap, "exists", False) else {}
         calls.sort(key=lambda c: c.started_at, reverse=True)
-        return Snapshot(calls=calls, bookings=bookings, callbacks=callbacks, reviews=reviews, settings=settings,
-                        as_of=self.clock(), source=self.kind)
+        return Snapshot(calls=calls, bookings=bookings, callbacks=callbacks, reviews=reviews,
+                        settings=dict(packet.get("settings") or {}), as_of=self.clock(), source=self.kind)
 
     def set_callback_status(self, callback_id: str, status: str, *, now: dt.datetime) -> bool:
-        ref = self.client.document(f"{self.paths.callbacks}/{callback_id}")
-        if not getattr(ref.get(), "exists", False):
+        stored = self.packet.read() if self.packet is not None else None
+        if stored is not None:  # the packet answers this for free
+            known = any(row.get("id") == callback_id for row in stored.get("callbacks") or [])
+        else:  # no packet yet: one document read, not a whole tree
+            known = getattr(self.client.document(f"{self.paths.callbacks}/{callback_id}").get(), "exists", False)
+        if not known:
             return False
-        ref.set({"status": status, "updatedAt": now.isoformat()}, merge=True)
-        self.invalidate()
+        fields = {"status": status, "updatedAt": now.isoformat()}
+        self.client.document(f"{self.paths.callbacks}/{callback_id}").set(fields, merge=True)
+        self._patch(lambda pk: upsert(pk.setdefault("callbacks", []), callback_id, fields))
         return True
 
     def set_gap_review(self, review: ReviewRecord) -> None:
-        self.client.document(f"{self.paths.unanswered}/{review.key}").set({
-            "status": review.status, "answer": review.answer, "question": review.question,
-            "reviewedAt": (review.reviewed_at or self.clock()).isoformat(),
-        }, merge=True)
-        self.invalidate()
+        fields = {"status": review.status, "answer": review.answer, "question": review.question,
+                  "reviewedAt": (review.reviewed_at or self.clock()).isoformat()}
+        self.client.document(f"{self.paths.unanswered}/{review.key}").set(fields, merge=True)
+        self._patch(lambda pk: upsert(pk.setdefault("unanswered", []), review.key, fields))
 
     def update_settings(self, fields: dict) -> dict:
         ref = self.client.document(self.paths.settings_doc)
         ref.set(fields, merge=True)
-        self.invalidate()
-        snap = ref.get()
-        return (snap.to_dict() or {}) if getattr(snap, "exists", False) else dict(fields)
+        stored = self.packet.read() if self.packet is not None else None
+        if stored is not None:
+            current = dict(stored.get("settings") or {})
+        else:  # no packet yet: read back the one document rather than the whole tree
+            snap = ref.get()
+            current = (snap.to_dict() or {}) if getattr(snap, "exists", False) else {}
+        merged = {**current, **fields}
+        self._patch(lambda pk: pk.__setitem__("settings", merged))
+        return merged
+
+    def _patch(self, mutate) -> None:
+        """Keep the day's packet true after a write, rather than paying for a whole re-fetch. If
+        there is no packet to patch (none configured, nothing written yet, or a read-only disk),
+        fall back to dropping the in-process snapshot so the next read rebuilds it."""
+        if self.packet is None or self.packet.patch(mutate) is None:
+            self.invalidate()
+        else:
+            self._cached = None
 
 
 def review_key(question: str) -> str:

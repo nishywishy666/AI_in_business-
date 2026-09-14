@@ -125,6 +125,34 @@ def test_marketing_flow_through_the_dashboard(client):
     assert boot["overview"]["quickActions"][2]["label"] == "Top trend this week"
 
 
+def test_the_bootstrap_does_not_re_read_the_marketing_tree_every_poll(tmp_path):
+    """The dashboard polls, so anything the bootstrap reads live is read all day. A brief's 8 posts
+    plus the usage snapshot came to ~30 reads a poll — ~43,000 a day against a 50,000 free tier."""
+    app, ctx, _ = dashboard_app(tmp_path)
+    with TestClient(app) as c:
+        assert c.post("/api/jobs/marketing-scan").status_code == 200
+        hub = ctx.marketing
+        hub.forget()
+        first = c.get("/api/dashboard/bootstrap").json()["trends"]
+        calls = {"n": 0}
+        build = hub._trends
+
+        def counted(**kwargs):
+            calls["n"] += 1
+            return build(**kwargs)
+
+        hub._trends = counted
+        for _ in range(5):
+            c.get("/api/dashboard/bootstrap")
+        assert calls["n"] == 0, "five polls, no rebuild"
+        assert c.get("/api/dashboard/bootstrap").json()["trends"]["scanId"] == first["scanId"]
+
+        # the things that change it say so
+        hub.forget("trends")
+        c.get("/api/dashboard/bootstrap")
+        assert calls["n"] == 1
+
+
 def test_bootstrap_says_which_free_model_is_answering(client):
     """The line above both chats. Offline it still names the tier and never raises — a chat that
     works while this is unavailable must not be blocked by it."""

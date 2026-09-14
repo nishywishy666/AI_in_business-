@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import threading
+import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from marketing_radar.agent.gemini import GeminiExhausted
 from marketing_radar.agent.like import PostNotFound, choose_angle, like_post
@@ -27,6 +29,13 @@ log = logging.getLogger(__name__)
 
 PLATFORM_LABELS = {"tiktok": "TikTok", "instagram": "Instagram", "youtube": "YouTube Shorts", "facebook": "Facebook",
                    "reddit": "Reddit"}
+# The dashboard polls, so anything it reads on every poll is read all day. A brief carries 3 global +
+# 5 niche posts, each its own document, and the usage snapshot is another handful — ~30 reads a poll,
+# which is ~43,000 a day against a 50,000 free tier. These are cached for a beat instead; a scan lands
+# every two days, so a few minutes of staleness costs nothing and the numbers stay inside the tier.
+TRENDS_TTL = float(os.environ.get("MARKETING_TRENDS_TTL", "300") or 300)
+STATUS_TTL = float(os.environ.get("MARKETING_STATUS_TTL", "60") or 60)
+
 CHAT_GREETING = ("I've read the latest scan. Ask what's trending for you or globally, what to post tomorrow, "
                  "or for captions on a card.")
 EMPTY_GREETING = "No scan has run yet. The first trend scan is scheduled; ask me again once it lands."
@@ -52,7 +61,22 @@ class MarketingHub:
         self._deps = deps
         self._injected = (settings, deps)  # what reset() restores, so an injected double survives it
         self._lock = threading.Lock()
+        self._memo: dict[str, tuple[float, Any]] = {}
         self.error: str | None = None
+
+    # ---- read-through cache ----------------------------------------------------------------------
+    def _memoized(self, key: str, ttl: float, build: Callable[[], Any]) -> Any:
+        hit = self._memo.get(key)
+        if hit is not None and ttl > 0 and time.monotonic() - hit[0] < ttl:
+            return hit[1]
+        value = build()
+        self._memo[key] = (time.monotonic(), value)
+        return value
+
+    def forget(self, *keys: str) -> None:
+        """Drop cached reads after something changes them (a like, a save, a forced refresh)."""
+        for key in keys or tuple(self._memo):
+            self._memo.pop(key, None)
 
     @property
     def settings(self) -> Settings:
@@ -104,6 +128,7 @@ class MarketingHub:
         user's way out of that."""
         with self._lock:
             self._settings, self._deps = self._injected
+            self._memo.clear()
             self.error = None
 
     # ---- read side -----------------------------------------------------------------------------------
@@ -116,10 +141,18 @@ class MarketingHub:
             log.warning("brief unavailable: %s", exc)
             return None
 
-    def ai_status(self) -> dict:
+    def ai_status(self, *, fresh: bool = False) -> dict:
         """The line above each chat: which free model is answering, how much of its day is left, and
         the scan credits behind the trend data. Read-only and best effort — a chat that works while
-        this is unavailable should not be blocked by it."""
+        this is unavailable should not be blocked by it.
+
+        Cached for `STATUS_TTL`, because the bootstrap asks for it on every poll. `fresh=True` is the
+        path the chats take after a turn, where the whole point is that the number moved."""
+        if fresh:
+            self.forget("ai_status")
+        return self._memoized("ai_status", STATUS_TTL, self._ai_status)
+
+    def _ai_status(self) -> dict:
         out: dict[str, Any] = {"provider": "Gemini free tier", "model": None, "modelId": None,
                                "usedToday": None, "capToday": None, "credits": None, "paused": False,
                                "resetsIn": None, "offline": self.offline}
@@ -151,11 +184,19 @@ class MarketingHub:
             return None
 
     def trends(self, *, force: bool = False) -> dict[str, Any]:
-        """UI-shaped cards. `score` is rank-normalised inside each list (top card = 99) because the
-        AIOS `final` is a relative velocity, not a percentage. `force=True` (the "Refresh now" button)
-        re-reads Firestore instead of the once-a-day local cache."""
-        if force:
-            self.reset()
+        """UI-shaped cards, cached for `TRENDS_TTL` — the bootstrap asks for these on every poll, and
+        building them costs one read per post. `force=True` (the "Refresh now" button) re-reads
+        Firestore instead of the once-a-day local cache.
+
+        `score` is rank-normalised inside each list (top card = 99) because the AIOS `final` is a
+        relative velocity, not a percentage."""
+        if not force:
+            return self._memoized("trends", TRENDS_TTL, lambda: self._trends(force=False))
+        self.reset()
+        return self._memoized("trends", TRENDS_TTL, lambda: self._trends(force=True))
+
+    def _trends(self, *, force: bool = False) -> dict[str, Any]:
+        """Builds the cards. `force` only steers `get_brief` here — the caller has already reset."""
         try:
             brief, deps = self.brief(force=force), self.deps()
         except Exception as exc:  # deps could not be built at all: report it, don't 500 the dashboard
@@ -198,7 +239,10 @@ class MarketingHub:
 
     # ---- write side (Like / Save) -------------------------------------------------------------------
     def like(self, post_id: str) -> tuple[int, dict]:
-        return self.api().like(post_id)
+        try:
+            return self.api().like(post_id)
+        finally:
+            self.forget("trends", "ai_status")  # the card's state and the model counters both moved
 
     def save(self, post_id: str) -> tuple[int, dict]:
         """Save from a card or the modal: mark the post saved, then Like → angle 0 → saved script
@@ -211,6 +255,7 @@ class MarketingHub:
             if post is None:
                 return 404, {"error": f"post {post_id} not found"}
             deps.store.update(deps.store.paths.post(post_id), {"saved": True})
+            self.forget("trends")
         except PostNotFound as exc:
             return 404, {"error": str(exc)}
         except Exception as exc:

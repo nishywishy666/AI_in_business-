@@ -83,6 +83,9 @@
       "rgba(var(--dc-glow),calc(var(--dc-glow-intensity) * .35)) 32%,transparent 62%);" +
       "-webkit-mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);-webkit-mask-composite:xor;" +
       "mask:linear-gradient(#fff 0 0) content-box,linear-gradient(#fff 0 0);mask-composite:exclude}" +
+      // a dialog backdrop is positioned but has no z-index, so the wash would paint over it and
+      // tint the text inside; it steps aside while one is open
+      "body:has(.dialog-backdrop) .dc-spotlight{opacity:0 !important}" +
       ".dc-spotlight{position:fixed;width:680px;height:680px;border-radius:50%;pointer-events:none;z-index:5;" +
       "opacity:0;transform:translate(-50%,-50%);transition:opacity .28s ease;background:radial-gradient(circle," +
       "rgba(var(--dc-glow),.10) 0%,rgba(var(--dc-glow),.05) 25%,rgba(var(--dc-glow),.02) 45%,transparent 70%)}" +
@@ -312,6 +315,7 @@
     urgent: "background:#a03a3a", warn: "background:var(--color-accent-500)",
     info: "background:var(--color-accent)", ok: "background:#3a7a4a"
   };
+  var POLL_MS = 300000;  // 5 minutes
   var MAX_CHAT_RETRIES = 4;  // ~4 cooldowns before the question gives up and reports back
   var PLACEHOLDER_TREND = { id: "_none", niche: true, platform: "", score: 0, title: "No scan yet", why: "" };
   var BAND_STYLE = {
@@ -368,7 +372,10 @@
     this.__live = { analytics: {}, angles: {}, pending: {} };
     var self = this;
     this.__refresh();
-    this.__timer = setInterval(function () { self.__refresh(); }, 60000);
+    // Every read the bootstrap makes is paid once per tick, all day. Nothing on this dashboard
+    // changes minute to minute, and the things that do — a sent message, a save, Refresh now —
+    // already refresh themselves, so the background poll is deliberately slow.
+    this.__timer = setInterval(function () { self.__refresh(); }, POLL_MS);
     // Click-out for the profile menu. The menu and its trigger share one positioned parent, so
     // "outside" is anything not inside that parent — which keeps the trigger's own click a plain
     // toggle instead of an open-then-immediately-close.
