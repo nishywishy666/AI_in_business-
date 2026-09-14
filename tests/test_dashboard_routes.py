@@ -161,14 +161,17 @@ def test_save_sticks_even_when_every_free_model_is_paused(tmp_path):
         assert post_id in after["savedIds"] and after["savedCount"] >= 1
 
 
-def test_refresh_trends_rereads_the_brief_now(client):
+def test_refresh_trends_rereads_the_brief_now(tmp_path):
     """The "Refresh now" button: never 500s on an empty state, and picks up a brief that landed after
-    the once-a-day local cache was written — the case where the UI would otherwise show nothing."""
-    empty = client.post("/api/dashboard/trends/refresh")
-    assert empty.status_code == 200 and empty.json()["empty"] is True and empty.json()["note"]
-    assert client.post("/api/jobs/marketing-scan").status_code == 200
-    fresh = client.post("/api/dashboard/trends/refresh").json()
-    assert not fresh["empty"] and fresh["items"] and fresh["scanId"]
+    the once-a-day local cache was written — the case where the UI would otherwise show nothing.
+    Own app: the module client has already run a scan by the time this test runs."""
+    app, _, _ = dashboard_app(tmp_path)
+    with TestClient(app) as c:
+        empty = c.post("/api/dashboard/trends/refresh")
+        assert empty.status_code == 200 and empty.json()["empty"] is True and empty.json()["note"]
+        assert c.post("/api/jobs/marketing-scan").status_code == 200
+        fresh = c.post("/api/dashboard/trends/refresh").json()
+        assert not fresh["empty"] and fresh["items"] and fresh["scanId"]
 
 
 def test_overlord_answers_from_the_records_without_a_model(client):

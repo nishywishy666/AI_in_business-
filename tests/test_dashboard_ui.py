@@ -14,7 +14,9 @@ MANIFEST = Path(__file__).parent / "fixtures" / "ui_manifest.json"
 
 
 def _sha(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    # Line-ending neutral: a Windows checkout with core.autocrlf=true rewrites LF to CRLF, which
+    # must not read as "the design was edited" (lessons/0007).
+    return hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
 def test_ui_files_are_the_recorded_export():
@@ -39,7 +41,8 @@ def test_every_patch_anchor_occurs_exactly_once_and_page_renders():
     for _, replacement in ui.PATCHES:
         assert replacement.replace("\n", newline) in page
     for anchor, replacement in ui.PATCHES:
-        if "{{" not in anchor:
+        # a patch that only appends to its anchor keeps the anchor text; every other anchor must be gone
+        if "{{" not in anchor and anchor not in replacement:
             assert anchor.replace("\n", newline) not in page
     # the bridge sits inside the data-dc-script block, after the class, before its closing tag
     start = page.index(ui.SCRIPT_OPEN)

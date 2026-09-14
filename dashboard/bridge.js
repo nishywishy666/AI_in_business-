@@ -541,9 +541,6 @@
       vals.freshness = { asOf: live && live.error ? "unavailable" : "loading", timezone: "", staleAfterMinutes: 60 };
       vals.marketingChat = this.__chatRows(vals.marketingChat);
       vals.overlordThread = this.__chatRows(vals.overlordThread);
-      this.__headerVals(vals);
-    this.__calendarVals(vals);
-    this.__aiLine(vals);
       return vals;
     }
     var s = this.state;
