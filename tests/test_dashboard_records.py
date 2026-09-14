@@ -18,9 +18,11 @@ def test_seeded_runs_replay_into_calls_bookings_callbacks_and_gaps(tmp_path):
     assert len(booked) == 6 and len(snap.bookings) == 6 and all(b.party_size for b in snap.bookings)
     assert all(b.email_sent for b in snap.bookings)
     reasons = {cb.reason for cb in snap.callbacks}
-    assert {"catering", "allergen_unknown", "no_data"} <= reasons and all(cb.status == "open" for cb in snap.callbacks)
+    # plan 0012: delivery is a fact now, so the mockup day's only remaining gaps are allergen-shaped
+    assert {"catering", "allergen_unknown"} <= reasons and all(cb.status == "open" for cb in snap.callbacks)
     gaps = [q for c in snap.calls for q, _ in c.gap_questions]
-    assert any("gluten" in q for q in gaps) and any("delivery" in q for q in gaps)
+    assert any("gluten" in q for q in gaps) and any("dairy" in q for q in gaps)
+    assert not any("delivery" in q for q in gaps)  # answered from the delivery fact since plan 0012
     latencies = [ms for c in snap.calls for ms in c.agent_latencies]
     assert latencies and all(ms >= 0 for ms in latencies)
 

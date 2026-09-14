@@ -28,7 +28,13 @@ def test_lookups_answer_from_the_dataset():
     gluten = answer_question("Do you have anything gluten-free?", ctx, r)
     assert gluten.source == "not_found" and gluten.reason == "allergen_unknown"
     delivery = answer_question("Do you do delivery?", ctx, r)
-    assert delivery.source == "not_found" and delivery.reason == "no_data"
+    assert delivery.source == "fact" and "takeaway only" in delivery.payload["value"]  # plan 0012: an everyday fact now
+    holidays = answer_question("Are you open on the public holiday Monday?", ctx, r)
+    assert holidays.source == "fact" and holidays.args["fact_key"] == "public_holidays"  # specific key beats hours' "open"
+    gift = answer_question("Do you sell gift cards?", ctx, r)
+    assert gift.args["fact_key"] == "gift_vouchers"  # not payment's "card"
+    breakfast = answer_question("Do you do breakfast?", ctx, r)
+    assert breakfast.source == "not_found" and breakfast.reason == "no_data"
 
 
 def test_capacity_windows_come_from_the_mockup_hours():

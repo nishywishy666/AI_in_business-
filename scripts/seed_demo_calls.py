@@ -116,6 +116,83 @@ def day_scenarios(local_date: dt.date, *, full: bool) -> list[dict]:
     return scenarios
 
 
+# ---- the realistic profile: what a toastie shop in Eaton Mall actually gets asked (plan 0012) ---------
+# One persona per number. Rotated by day so a week has variety and nothing repeats daily.
+
+def realistic_pool(when: str, sat: str) -> list[dict]:
+    return [
+        # bookings
+        {"from": "+61412555210", "turns": booking("Priya", "two", when, "12:15", "priya.n@gmail.com",
+                                                  opener=f"Hi, could I book a table for two at 12:15 {when}?")},
+        {"from": "+61398221004", "turns": booking("Marco", "four", sat, "1pm", "marco.r@outlook.com",
+                                                  opener=f"Table for four this {sat} at 1?")},
+        {"from": "+61411887320", "turns": booking("Hannah", "three", when, "8:45", "hannah.lee@gmail.com",
+                                                  opener=f"Can I grab a table for three {when} at 8:45? It's a breakfast meeting.")},
+        {"from": "+61433908871", "turns": booking("Dev", "six", sat, "12:30", "dev.patel@gmail.com",
+                                                  opener=f"Six of us for lunch this {sat}, 12:30 if you can.")},
+        {"from": "+61444213377", "turns": booking("Liam", "two", when, "1pm", "liam.oc@gmail.com",
+                                                  opener=f"Hey, any chance of a table for two at 1 {when}?")},
+        {"from": "+61456781234", "turns": booking("Aisha", "five", sat, "11:30", "aisha.m@outlook.com",
+                                                  opener=f"Could I book five people for {sat} at 11:30, please?")},
+        # questions the receptionist answers from facts and the menu
+        {"from": "+61400111222", "turns": question("Is there parking near you?")},
+        {"from": "+61466123123", "turns": question("Are you on Uber Eats, or do you deliver?")},
+        {"from": "+61455000111", "turns": question("Can I order ahead and pick up at twelve?")},
+        {"from": "+61421334455", "turns": question("Are you open on the public holiday Monday?")},
+        {"from": "+61407556677", "turns": question("Do you do coffee as well, or just toasties?")},
+        {"from": "+61418223344", "turns": question("Can I bring my dog if we sit outside?")},
+        {"from": "+61439887766", "turns": question("Do you have high chairs?")},
+        {"from": "+61402998877", "turns": question("Do you take card, or is it cash only?")},
+        {"from": "+61415667788", "turns": question("Is the shop wheelchair accessible?")},
+        {"from": "+61424556699", "turns": question("Do you sell gift cards?")},
+        {"from": "+61431776655", "turns": question("Are you BYO?")},
+        {"from": "+61409112233", "turns": question("How busy are you around one o'clock?")},
+        {"from": "+61436445566", "turns": question("Are you hiring at the moment?")},
+        {"from": "+61428334455", "turns": question("Do you have any vegan options?")},
+        {"from": "+61403667788", "turns": question("What time do you close today?")},
+        {"from": "+61417889900", "turns": question("Where exactly are you in Oakleigh?")},
+        {"from": "+61455000111", "turns": question("How much is the Uncle Tony?")},
+        {"from": "+61426778899", "turns": question("What's in the Frank Fungini?")},
+        {"from": "+61438990011", "turns": question("Do you do catering platters for an office lunch?")},
+        {"from": "+61401223344", "turns": question("Do you take bookings, or is it just walk-in?")},
+        # gaps: allergen-shaped or off-menu, so the receptionist takes a callback rather than guess
+        {"from": "+61432118764", "turns": question("Do you have anything gluten-free?")},
+        {"from": "+61419445566", "turns": question("Do you have oat milk?")},
+        {"from": "+61427556677", "turns": question("Is the Luca Brasi nut free?")},
+        {"from": "+61434667788", "turns": question("Do you do breakfast, like eggs on toast?")},
+        # explicit callbacks
+        {"from": "+61432118764", "turns": callback("I need catering for about 30 people on Saturday, is that something you do?")},
+        {"from": "+61440778899", "turns": callback("It's a birthday for 15 people next Friday, can I talk to someone about a set menu?")},
+        {"from": "+61411000999", "turns": callback("I ordered two toasties yesterday and both were cold. I'd like to speak to the owner.")},
+        {"from": "+61395551234", "turns": callback("It's Dean from the bakery wholesale. Can Tony call me back about next week's bread order?")},
+        # chitchat
+        {"from": "+61411000999", "turns": chitchat("Just checking you're open, that's all!")},
+        {"from": "+61498001122", "turns": chitchat("Oh sorry, wrong number!")},
+        {"from": "+61452334455", "turns": chitchat("Hey, are you the toastie place from TikTok? Love your stuff.")},
+    ]
+
+
+_TIMES = ["07:48", "08:12", "08:35", "08:47", "09:15", "09:40", "10:02", "10:30", "11:05", "11:30", "12:05", "12:20",
+          "12:40", "13:05", "13:20", "13:45", "14:05", "14:25"]
+
+
+def realistic_day_scenarios(local_date: dt.date, *, offset: int) -> list[dict]:
+    """`offset` days before today. Recent days are fuller; Sunday (closed) gets a couple of stragglers.
+    The pool is walked with a stride so consecutive days do not share a run of questions."""
+    weekday = local_date.weekday()
+    when = "today" if weekday < 6 else "Monday"
+    sat = "Saturday" if weekday != 5 else "next Saturday"
+    pool = realistic_pool(when, sat)
+    count = 2 if weekday == 6 else 9 if offset <= 1 else 6
+    start = (offset * 7) % len(pool)
+    picks = [pool[(start + i * 5) % len(pool)] for i in range(count)]
+    if weekday == 6:  # no bookings on a closed day
+        not_booking = [p for p in pool if p["turns"][0][1]["intent"] != "BOOK"]
+        picks = [p for p in picks if p["turns"][0][1]["intent"] != "BOOK"] or not_booking[:1]
+    step = max(1, len(_TIMES) // max(1, len(picks)))
+    return [{"time": _TIMES[min(i * step + (offset % step), len(_TIMES) - 1)], **pick} for i, pick in enumerate(picks)]
+
+
 class SeedClock:
     def __init__(self, start: dt.datetime) -> None:
         self.now = start
@@ -180,13 +257,17 @@ async def run_call(engine: ReceptionistTurnEngine, sink, clock: SeedClock, *, bu
 
 
 def seed(*, sink, reader, business_id: str, tz: str, windows: list[dict], answerer, days: int = 7,
-         today: dt.date | None = None, quiet: bool = False) -> list[dict]:
+         today: dt.date | None = None, quiet: bool = False, profile: str = "mockup") -> list[dict]:
+    """`profile="mockup"` is the eight-call day the design shows (the dashboard tests pin its numbers);
+    `"realistic"` rotates the wider pool above."""
     zone = ZoneInfo(tz)
     today = today or dt.datetime.now(zone).date()
     results = []
     for offset in range(days - 1, -1, -1):
         local_date = today - dt.timedelta(days=offset)
-        for scenario in day_scenarios(local_date, full=offset in (0, 1)):
+        scenarios = (realistic_day_scenarios(local_date, offset=offset) if profile == "realistic"
+                     else day_scenarios(local_date, full=offset in (0, 1)))
+        for scenario in scenarios:
             hour, minute = (int(x) for x in scenario["time"].split(":"))
             start = dt.datetime.combine(local_date, dt.time(hour, minute), tzinfo=zone).astimezone(UTC)
             if start > dt.datetime.now(UTC) and offset == 0:
@@ -202,12 +283,40 @@ def seed(*, sink, reader, business_id: str, tz: str, windows: list[dict], answer
     return results
 
 
+def reset_firestore_demo(client, business_id: str) -> None:
+    """Remove a previous demo seed from Firestore. Refuses to run if any call is not a `CAsim*` demo
+    call, so real traffic can never be deleted by a reseed."""
+    paths = BusinessPaths(business_id)
+    calls = list(client.collection(paths.calls).stream())
+    real = [c.id for c in calls if not c.id.startswith("CAsim")]
+    if real:
+        sys.exit(f"refusing --reset: {len(real)} non-demo call(s) present, e.g. {real[0]}")
+    refs = []
+    for call in calls:
+        refs.extend(t.reference for t in client.collection(paths.turns(call.id)).stream())
+        refs.append(call.reference)
+    for coll in (paths.callbacks, paths.bookings, paths.emails_sent):
+        refs.extend(d.reference for d in client.collection(coll).stream()
+                    if str((d.to_dict() or {}).get("callId") or "CAsim").startswith("CAsim"))
+    refs.extend(d.reference for d in client.collection(paths.rollups).stream())
+    for i in range(0, len(refs), 400):
+        batch = client.batch()
+        for ref in refs[i:i + 400]:
+            batch.delete(ref)
+        batch.commit()
+    print(f"reset: deleted {len(calls)} demo calls and {len(refs) - len(calls)} dependent documents")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--sink", choices=["local", "firestore"], default="local")
     parser.add_argument("--days", type=int, default=7)
-    parser.add_argument("--reset", action="store_true", help="delete previous .testruns/*.jsonl first (local sink only)")
+    parser.add_argument("--reset", action="store_true",
+                        help="delete previous demo calls first: .testruns/*.jsonl locally, or every CAsim* call (and what "
+                             "references it) in Firestore — refused if any real call is present")
     parser.add_argument("--fake-gemini", action="store_true", help="use the deterministic answer fake even if GEMINI_API_KEY is set")
+    parser.add_argument("--profile", choices=["realistic", "mockup"], default="realistic",
+                        help="realistic = the rotated pool of everyday questions (plan 0012); mockup = the design's eight-call day")
     args = parser.parse_args()
 
     from dotenv import load_dotenv
@@ -219,6 +328,8 @@ def main() -> int:
 
         config = load_config()
         sink = make_sink(config)
+        if args.reset:
+            reset_firestore_demo(sink.client, config.business_id)
     else:
         from services.common.config import local_config
 
@@ -233,7 +344,11 @@ def main() -> int:
 
     dash = get_settings()
     windows = list((load_yaml("capacity.yaml") or {}).get("windows") or [])
-    reader = JsonBusinessReader(dash.dataset_dir, config.business_id, windows=windows)
+    # Slots must exist for the days being seeded, or every past-day booking bails to a callback
+    # (the JSON reader materialises capacity from `today` forward).
+    first_day = dt.datetime.now(ZoneInfo(config.tz_business)).date() - dt.timedelta(days=args.days)
+    reader = JsonBusinessReader(dash.dataset_dir, config.business_id, windows=windows, today=first_day,
+                                slot_days=args.days + 60)
     answerer = FakeAnswerTransport()
     if not args.fake_gemini and os.environ.get("GEMINI_API_KEY"):
         try:
@@ -243,9 +358,9 @@ def main() -> int:
             print(f"Gemini phrasing: {answerer.model_id}")
         except Exception as exc:
             print(f"Gemini unavailable ({exc}); using the fake answerer")
-    print(f"seeding {args.days} days of calls for {config.business_id} into the {sink.kind} sink")
+    print(f"seeding {args.days} days of {args.profile} calls for {config.business_id} into the {sink.kind} sink")
     results = seed(sink=sink, reader=reader, business_id=config.business_id, tz=config.tz_business, windows=windows,
-                   answerer=answerer, days=args.days)
+                   answerer=answerer, days=args.days, profile=args.profile)
     outcomes = {}
     for r in results:
         outcomes[r["outcome"]] = outcomes.get(r["outcome"], 0) + 1

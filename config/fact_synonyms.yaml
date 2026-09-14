@@ -9,11 +9,29 @@
 # name) → section → fact (synonym hit) → not_found.
 
 facts:
+  # Specific keys first: the first synonym hit wins, and "open"/"today" under `hours` would otherwise
+  # swallow "are you open on public holidays" or "do you do delivery today" (plan 0012).
+  public_holidays: ["public holiday", "public holidays", christmas, easter, "long weekend", anzac, "cup day", "good friday"]
+  delivery: [delivery, deliver, "uber eats", ubereats, doordash, "door dash", menulog, deliveroo]
+  takeaway: [takeaway, "take away", takeout, "pick up", pickup, "phone order", "order ahead", "pre order", "pre-order"]
+  catering: [catering, cater, platter, platters, function, "office lunch", "work lunch"]
+  dietary: [vegan, vegetarian, "plant based", "plant-based", halal, kosher, "meat free"]
+  kids: [kids, children, child, "high chair", highchair, baby, pram, family, toddler]
+  dogs: [dog, dogs, pets, "pet friendly", puppy]
+  coffee: [coffee, latte, espresso, cappuccino, "flat white", "cold drink", "cold drinks", "soft drink", juice]
+  accessibility: [wheelchair, accessible, accessibility, "step free", "step-free", disabled, mobility, ramp]
+  gift_vouchers: [voucher, vouchers, "gift card", "gift cards"]
+  loyalty: [loyalty, "rewards card", "stamp card", "coffee card"]
+  payment: [card, cash, eftpos, "apple pay", payment, "minimum spend", "split the bill", contactless, paywave]
+  wifi: [wifi, "wi-fi", "wi fi", internet]
+  alcohol: [byo, alcohol, wine, beer, licensed, licence, license]
+  wait_time: [wait, "how long", queue, busy, "how busy"]
+  jobs: [job, jobs, hiring, "work for you", resume, "cv "]
   hours: [hours, open, opening, close, closing, "what time", "when are you", "until when", today, tonight, weekend]
   address: [address, where, located, location, "find you", street, suburb, directions]
   phone: [phone, number, call, contact]
   parking: [parking, park]
-  bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings"]
+  bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings", "hold a table"]
   seating: [seats, seating, capacity, "how many people", outdoor, indoor, "sit down", "sit outside"]
   socials: [instagram, tiktok, social, socials, "follow you"]
   website: [website, online, "order online"]

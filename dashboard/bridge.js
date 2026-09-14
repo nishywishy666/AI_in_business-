@@ -124,6 +124,13 @@
       ".dc-sidebar [style*='var(--color-neutral-400)'],.dc-sidebar [style*='var(--color-neutral-500)']" +
       "{color:rgba(255,255,255,.78) !important}" +
       ".dc-sidebar .btn{color:#fff !important}" +
+      // The collapsed rail is 64px, and the mascot sat inside 12px + 6px of padding on each side —
+      // about 28px of room for an image whose own ratio is 490x556. Sizing it by height then let a
+      // max-width clamp the width, which is exactly how an image gets squashed. Drive it from the
+      // width instead, so the height always follows the ratio, and give the rail its padding back.
+      ".dc-sidebar.dc-collapsed > div:first-child{padding-left:4px !important;padding-right:4px !important}" +
+      ".dc-sidebar img[src$='mascot.svg']{width:100% !important;height:auto !important;" +
+      "max-width:52px !important;align-self:center;object-fit:contain}" +
       ".btn,.tag,.seg-opt,th{font-weight:577 !important}" +
       // last, so a weight the design stated explicitly wins over the rules above
       "[style*='font-weight: 400'],[style*='font-weight:400']{font-weight:577 !important}" +
@@ -152,14 +159,11 @@
       "svg[width='18'][height='18']{width:22px;height:22px}" +
       "button:has(> svg[width='18']){transition:transform .18s cubic-bezier(.22,1,.36,1)}" +
       "button:has(> svg[width='18']):hover{transform:translateY(-1px) scale(1.08)}" +
-      // Marketing fits the viewport, so the page itself does not scroll — only the trend column does.
-      // The chain below is all one idea: every ancestor of the scrolling column has to give up its
-      // own height and its min-height:auto, or the column grows instead of scrolling.
-      ".scrollpane.dc-fit{overflow:hidden !important;padding-bottom:28px !important;min-height:0}" +
-      ".scrollpane.dc-fit > div{height:100%;min-height:0;align-items:stretch !important}" +
-      ".scrollpane.dc-fit .mkt-scroll{max-height:none !important;height:100%;min-height:0;overflow-y:auto}" +
-      ".scrollpane.dc-fit .dc-chat-row{flex:1 1 auto;min-height:0}" +
-      ".scrollpane.dc-fit .mkt-chat{height:auto !important;min-height:0}" +
+      // Marketing: the chat stays a fixed, small panel and the trend column is the only thing that
+      // scrolls. Both are capped against the viewport rather than the page being pinned, so the
+      // screen still behaves normally if the content ever does outgrow it.
+      ".mkt-chat{height:440px !important;min-height:0 !important;max-height:calc(100vh - 250px)}" +
+      ".mkt-scroll{max-height:calc(100vh - 200px) !important;overflow-y:auto}" +
       "@keyframes dc-screen-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}" +
       ".scrollpane.dc-screen-in{animation:dc-screen-in .34s cubic-bezier(.22,1,.36,1) both}" +
       "@media (prefers-reduced-motion:reduce){.dc-sidebar-nav.dc-nav-ready::before{transition:none}" +
@@ -390,24 +394,18 @@
     this.__onResize = function () { self.__placeNavPill(); };
     if (typeof window !== "undefined") window.addEventListener("resize", this.__onResize);
     this.__placeNavPill();
-    this.__markScreen();
     this.__initBento();
     this.__initSparks();
   };
   P.componentDidUpdate = function () {
     if (origDidUpdate) { try { origDidUpdate.apply(this, arguments); } catch (e) { console.error(e); } }
     this.__placeNavPill();
-    this.__markScreen();
   };
   // Measure the active nav item and hand its box to the sliding highlight. Reads the item's own
   // inline style, because the export gives the nav items no class — only the active one is painted.
-  // Marketing is the one screen that fits: it owns its own scrolling column, so the page behind it
-  // should not scroll too.
-  P.__markScreen = function () {
-    var pane = typeof document !== "undefined" && document.querySelector(".scrollpane:not(.mkt-scroll)");
-    if (pane) pane.classList.toggle("dc-fit", this.state.screen === "marketing");
-  };
   P.__placeNavPill = function () {
+    var rail = typeof document !== "undefined" && document.querySelector(".dc-sidebar");
+    if (rail) rail.classList.toggle("dc-collapsed", !!this.state.sidebarCollapsed);
     var nav = typeof document !== "undefined" && document.querySelector(".dc-sidebar-nav");
     if (!nav) return;
     var kids = nav.children, active = null;
@@ -541,9 +539,6 @@
       vals.freshness = { asOf: live && live.error ? "unavailable" : "loading", timezone: "", staleAfterMinutes: 60 };
       vals.marketingChat = this.__chatRows(vals.marketingChat);
       vals.overlordThread = this.__chatRows(vals.overlordThread);
-      this.__headerVals(vals);
-    this.__calendarVals(vals);
-    this.__aiLine(vals);
       return vals;
     }
     var s = this.state;
