@@ -147,11 +147,11 @@ class BookingMachine:
 
         if stage == "phone":
             if session.from_number and not slot.phone and slot.attempts.get("phone_asked") is None:
-                if _is_yes(text):
+                if is_yes(text):
                     slot.phone = session.from_number
                     slot.stage = "email"
                     return BookingStep(templates.ASK_EMAIL)
-                if _is_no(text):
+                if is_no(text):
                     slot.attempts["phone_asked"] = 1
                     return BookingStep(templates.ASK_PHONE)
             phone = parse_phone(value)
@@ -165,9 +165,9 @@ class BookingMachine:
             return self._email_turn(session, ctx, value, text)
 
         if stage == "confirm":
-            if _is_yes(text):
+            if is_yes(text):
                 return self._commit(session, ctx, now_local)
-            if _is_no(text):
+            if is_no(text):
                 # TODO(spec): what to change on "no" is not specified; restart from the date.
                 slot.stage, slot.attempts, slot.offered_alternatives = "date", {}, []
                 return BookingStep("No problem — " + templates.ASK_DATE.lower())
@@ -211,7 +211,7 @@ class BookingMachine:
         max_spell = threshold("MAX_EMAIL_SPELL_ATTEMPTS")
 
         if phase == "readback":
-            if _is_yes(text):
+            if is_yes(text):
                 slot.email = f"{state['local']}@{state['domain']}"
                 session.email_candidate = {**state, "phase": "accepted"}
                 slot.stage = "confirm"
@@ -233,14 +233,14 @@ class BookingMachine:
             return self._readback(session, state)
 
         if phase == "phonetic":
-            if _is_yes(text):
+            if is_yes(text):
                 return self._readback(session, state)
             if state.get("spell_attempts", 0) >= max_spell:
                 return self._give_up_email(session, state)
             return self._ask_spelling(session, state)
 
         if phase == "spelled_readback":
-            if _is_yes(text):
+            if is_yes(text):
                 slot.email = f"{state['local']}@{state['domain']}"
                 session.email_candidate = {**state, "phase": "accepted"}
                 slot.stage = "confirm"
@@ -501,12 +501,12 @@ def _router_field(stage: str) -> str:
     return {"email": "email_raw"}.get(stage, stage)
 
 
-def _is_yes(text: str) -> bool:
+def is_yes(text: str) -> bool:
     t = re.sub(r"[^a-z' ]", " ", (text or "").lower()).strip()
-    return any(re.search(rf"(^|\b){re.escape(y)}(\b|$)", t) for y in _YES) and not _is_no(t)
+    return any(re.search(rf"(^|\b){re.escape(y)}(\b|$)", t) for y in _YES) and not is_no(t)
 
 
-def _is_no(text: str) -> bool:
+def is_no(text: str) -> bool:
     t = re.sub(r"[^a-z' ]", " ", (text or "").lower()).strip()
     return any(re.search(rf"(^|\b){re.escape(n)}(\b|$)", t) for n in _NO)
 

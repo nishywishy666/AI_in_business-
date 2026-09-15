@@ -194,6 +194,31 @@ def test_email_spelling_flow_and_two_failures_still_book(tmp_path):
     assert c.mailer.sent == []
 
 
+@pytest.mark.parametrize("yes", ["yes", "yes please", "Yes that's correct"])
+def test_affirmative_at_confirm_books_even_when_router_says_answer_question(tmp_path, yes):
+    """Lesson 0010: the live router labels a bare affirmative ANSWER_QUESTION, which used to strand
+    the caller at confirm and file a junk callback instead of committing."""
+    c = Conversation(tmp_path)
+    c.say("book a table"); c.say("saturday", field="date", value="saturday"); c.say("7pm", field="time", value="7pm")
+    c.say("two", field="party_size", value="two"); c.say("Jo", field="name", value="Jo"); c.say("yes")
+    c.say("jo at gmail dot com", field="email_raw", value="jo at gmail dot com"); c.say("j o"); c.say("yes")
+    assert c.slot.stage == "confirm"
+    r = c.say(yes, intent="ANSWER_QUESTION")
+    assert c.slot.stage == "done", f"{yes!r} did not commit the booking"
+    assert r.tool_called == "commit_booking"
+
+
+def test_question_at_confirm_still_reaches_the_answerer(tmp_path):
+    """The yes/no shortcut must not swallow a genuine mid-booking question."""
+    c = Conversation(tmp_path)
+    c.say("book a table"); c.say("saturday", field="date", value="saturday"); c.say("7pm", field="time", value="7pm")
+    c.say("two", field="party_size", value="two"); c.say("Jo", field="name", value="Jo"); c.say("yes")
+    c.say("jo at gmail dot com", field="email_raw", value="jo at gmail dot com"); c.say("j o"); c.say("yes")
+    assert c.slot.stage == "confirm"
+    r = c.say("do you have parking", intent="ANSWER_QUESTION")
+    assert c.slot.stage == "confirm" and r.tool_called != "commit_booking"
+
+
 def test_calendar_failure_does_not_fail_booking(tmp_path):
     c = Conversation(tmp_path, calendar=FailingCalendar())
     c.say("book a table"); c.say("saturday", field="date", value="saturday"); c.say("7pm", field="time", value="7pm")

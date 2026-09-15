@@ -10,28 +10,34 @@
 
 facts:
   # Specific keys first: the first synonym hit wins, and "open"/"today" under `hours` would otherwise
-  # swallow "are you open on public holidays" or "do you do delivery today" (plan 0012).
-  public_holidays: ["public holiday", "public holidays", christmas, easter, "long weekend", anzac, "cup day", "good friday"]
-  delivery: [delivery, deliver, "uber eats", ubereats, doordash, "door dash", menulog, deliveroo]
-  takeaway: [takeaway, "take away", takeout, "pick up", pickup, "phone order", "order ahead", "pre order", "pre-order"]
-  catering: [catering, cater, platter, platters, function, "office lunch", "work lunch"]
-  dietary: [vegan, vegetarian, "plant based", "plant-based", halal, kosher, "meat free"]
-  kids: [kids, children, child, "high chair", highchair, baby, pram, family, toddler]
-  dogs: [dog, dogs, pets, "pet friendly", puppy]
-  coffee: [coffee, latte, espresso, cappuccino, "flat white", "cold drink", "cold drinks", "soft drink", juice]
-  accessibility: [wheelchair, accessible, accessibility, "step free", "step-free", disabled, mobility, ramp]
-  gift_vouchers: [voucher, vouchers, "gift card", "gift cards"]
-  loyalty: [loyalty, "rewards card", "stamp card", "coffee card"]
-  payment: [card, cash, eftpos, "apple pay", payment, "minimum spend", "split the bill", contactless, paywave]
-  wifi: [wifi, "wi-fi", "wi fi", internet]
-  alcohol: [byo, alcohol, wine, beer, licensed, licence, license]
-  wait_time: [wait, "how long", queue, busy, "how busy"]
-  jobs: [job, jobs, hiring, "work for you", resume, "cv "]
+  # swallow "are you open on public holidays" or "do you do delivery today" (plan 0012). `halal` sits
+  # before `dietary` because it has its own sourced answer, and `gift_vouchers`/`loyalty` sit before
+  # `coffee` and `payment` because "gift card" and "coffee card" contain their synonyms (plan 0013).
+  public_holidays: ["public holiday", "public holidays", holiday, holidays, christmas, easter, "long weekend", anzac, "cup day", "good friday", "boxing day"]
+  delivery: [delivery, deliver, delivers, "uber eats", ubereats, uber, doordash, "door dash", menulog, deliveroo, "bring it to"]
+  takeaway: [takeaway, "take away", "take-away", takeout, "pick up", pickup, "phone order", "order ahead", "pre order", "pre-order"]
+  catering: [catering, cater, caters, platter, platters, function, functions, "office lunch", "work lunch", "large order"]
+  halal: [halal, haram, "pork free", "pork-free"]
+  # No gluten/dairy/nut wording here: those are allergens and must reach the grounded allergen path
+  # (V9 "never guess"), not a generic dietary line (lessons/0011).
+  dietary: [vegan, vegetarian, veggie, "plant based", "plant-based", kosher, "meat free", dietary]
+  kids: [kids, kid, children, child, "high chair", highchair, baby, pram, family, families, toddler]
+  dogs: [dog, dogs, pets, "pet friendly", "dog friendly", puppy]
+  gift_vouchers: [voucher, vouchers, "gift card", "gift cards", "gift voucher", "gift vouchers"]
+  loyalty: [loyalty, rewards, "rewards card", "reward card", "stamp card", "punch card", "coffee card"]
+  coffee: [coffee, latte, espresso, cappuccino, "flat white", "cold drink", "cold drinks", "soft drink", juice, juices, barista]
+  accessibility: [wheelchair, accessible, accessibility, "step free", "step-free", disabled, mobility, ramp, toilet, toilets]
+  payment: [card, cash, eftpos, "apple pay", "google pay", payment, "minimum spend", "split the bill", contactless, paywave]
+  wifi: [wifi, "wi-fi", "wi fi", internet, password]
+  alcohol: [byo, alcohol, alcoholic, wine, beer, licensed, licence, license]
+  wait_time: [wait, waiting, "how long", queue, busy, "how busy", rush]
+  jobs: [job, jobs, hiring, "are you hiring", "work for you", "work there", resume, "cv ", vacancy, vacancies]
   hours: [hours, open, opening, close, closing, "what time", "when are you", "until when", today, tonight, weekend]
   address: [address, where, located, location, "find you", street, suburb, directions]
   phone: [phone, number, call, contact]
   parking: [parking, park]
-  bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings", "hold a table"]
+  bookings_policy: [walk-in, walk in, reservation, reservations, "do you take bookings", "do you do bookings", "hold a table",
+                    "need to book", "have to book", "can i book", "book a table", "book ahead"]
   seating: [seats, seating, capacity, "how many people", outdoor, indoor, "sit down", "sit outside"]
   socials: [instagram, tiktok, social, socials, "follow you"]
   website: [website, online, "order online"]

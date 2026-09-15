@@ -27,14 +27,40 @@ def test_lookups_answer_from_the_dataset():
     assert seats.source == "fact" and "28" in seats.payload["value"]
     gluten = answer_question("Do you have anything gluten-free?", ctx, r)
     assert gluten.source == "not_found" and gluten.reason == "allergen_unknown"
+    # plan 0012 made delivery an everyday fact; plan 0013 corrected it against the Uber Eats storefront
     delivery = answer_question("Do you do delivery?", ctx, r)
-    assert delivery.source == "fact" and "takeaway only" in delivery.payload["value"]  # plan 0012: an everyday fact now
+    assert delivery.source == "fact" and "Uber Eats" in delivery.payload["value"]
+    halal = answer_question("Is your food halal?", ctx, r)
+    assert halal.source == "fact" and halal.args["fact_key"] == "halal"  # its own sourced answer, not dietary
     holidays = answer_question("Are you open on the public holiday Monday?", ctx, r)
     assert holidays.source == "fact" and holidays.args["fact_key"] == "public_holidays"  # specific key beats hours' "open"
     gift = answer_question("Do you sell gift cards?", ctx, r)
     assert gift.args["fact_key"] == "gift_vouchers"  # not payment's "card"
+    coffee_card = answer_question("Do you have a coffee card?", ctx, r)
+    assert coffee_card.args["fact_key"] == "loyalty"  # not coffee's "coffee"
     breakfast = answer_question("Do you do breakfast?", ctx, r)
     assert breakfast.source == "not_found" and breakfast.reason == "no_data"
+
+
+def test_every_caller_facing_fact_is_reachable_by_some_question():
+    """A fact with no synonym entry can never be answered — it silently becomes a callback (lessons/0011)."""
+    import yaml
+
+    from config import load_yaml
+
+    synonyms = (load_yaml("fact_synonyms.yaml") or {}).get("facts") or {}
+    facts = {k for k in yaml.safe_load((DATASET / "facts.json").read_text()) if not k.startswith("_")}
+    internal = {"business_name", "owner_name", "owner_email"}  # used by templates/email, never spoken as an answer
+    assert (facts - internal) <= set(synonyms), f"unreachable facts: {sorted(facts - internal - set(synonyms))}"
+
+
+def test_allergen_questions_never_resolve_to_the_dietary_blurb():
+    """V9: gluten/dairy/nut wording must reach the grounded allergen path, not a marketing line."""
+    r = reader()
+    ctx = load_business_context(r, BUSINESS_ID)
+    for question in ("do you have gluten free bread", "is anything dairy free", "do you have nut free options"):
+        lookup = answer_question(question, ctx, r)
+        assert lookup.args.get("fact_key") != "dietary", question
 
 
 def test_capacity_windows_come_from_the_mockup_hours():

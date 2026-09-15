@@ -41,10 +41,16 @@ class GroqTransport:
         return self._client
 
     async def complete(self, *, system: str, user: str, timeout_s: float) -> str:
+        kwargs: dict[str, Any] = {}
+        if self.model.startswith("openai/gpt-oss"):
+            # Reasoning models spend max_tokens on reasoning before emitting any JSON; at the default
+            # effort they exceed the budget and Groq rejects the call with json_validate_failed.
+            kwargs["reasoning_effort"] = "low"
         response = await self._get().chat.completions.create(
             model=self.model, temperature=0, max_tokens=200, timeout=timeout_s,
             response_format={"type": "json_object"},
             messages=[{"role": "system", "content": system}, {"role": "user", "content": user}],
+            **kwargs,
         )
         return response.choices[0].message.content or ""
 

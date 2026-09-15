@@ -7,12 +7,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass
 from typing import Any, Protocol
 
 from config import threshold, thresholds
+
+log = logging.getLogger(__name__)
 
 _SENTENCE = re.compile(r"(?<=[.!?])\s+")
 
@@ -26,9 +29,10 @@ class AnswerTransport(Protocol):
 class GenAiAnswerTransport:
     """google-genai; model resolved at startup by intersecting the preference list with ListModels()."""
 
-    def __init__(self, api_key: str, model_id: str) -> None:
+    def __init__(self, api_key: str, model_id: str, fallbacks: list[str] | None = None) -> None:
         self.api_key = api_key
         self.model_id = model_id
+        self._fallbacks = list(fallbacks or [])
         self._client = None
 
     @classmethod
@@ -37,10 +41,20 @@ class GenAiAnswerTransport:
 
         client = genai.Client(api_key=api_key)
         available = {m.name.split("/")[-1] for m in client.models.list()}
-        model_id = resolve_model(available, preference or thresholds()["GEMINI_MODEL_PREFERENCE"])
-        transport = cls(api_key, model_id)
+        wanted = preference or thresholds()["GEMINI_MODEL_PREFERENCE"]
+        usable = [m for m in wanted if m in available and "preview" not in m and "pro" not in m.split("-")]
+        model_id = resolve_model(available, wanted)
+        transport = cls(api_key, model_id, fallbacks=[m for m in usable if m != model_id])
         transport._client = client
         return transport
+
+    def _step_down(self) -> bool:
+        """The daily free quota is per model, so an exhausted rung must not strand every later turn."""
+        if not self._fallbacks:
+            return False
+        previous, self.model_id = self.model_id, self._fallbacks.pop(0)
+        log.warning("gemini quota exhausted, stepping down", extra={"from": previous, "to": self.model_id})
+        return True
 
     def _get(self):
         if self._client is None:
@@ -53,7 +67,15 @@ class GenAiAnswerTransport:
         from google.genai import types
 
         config = types.GenerateContentConfig(system_instruction=system, temperature=0.4, max_output_tokens=120)
-        response = await self._get().aio.models.generate_content(model=self.model_id, contents=prompt, config=config)
+        try:
+            response = await self._get().aio.models.generate_content(model=self.model_id, contents=prompt,
+                                                                     config=config)
+        except Exception as exc:
+            # 429 = this model's daily free quota is gone for the rest of the Pacific day. This turn
+            # still falls back to its template; every later turn uses the next model that has quota.
+            if getattr(exc, "code", None) == 429 or "RESOURCE_EXHAUSTED" in str(exc):
+                self._step_down()
+            raise
         return response.text or ""
 
 

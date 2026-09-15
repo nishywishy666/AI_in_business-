@@ -33,6 +33,10 @@ uv.lock
 # Marketing Radar local cache / service-account files
 .marketing_radar_cache/
 *-service-account*.json
+*firebase-adminsdk*.json
+ai-in-business-uncle-tony-*.json
+client_secret_*.json
+secret_json/
 
 # Reference-only prior codebase (large media assets) — kept on disk, not tracked
 previous_work/
@@ -46,3 +50,4 @@ previous_work/
 assets/voice/*.wav
 assets/voice/*.ulaw
 models/*.onnx
+.env.bak

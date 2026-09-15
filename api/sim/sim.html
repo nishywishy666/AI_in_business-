@@ -43,6 +43,7 @@
   <button id="call">Call (mic)</button>
   <button id="hangup" class="secondary" disabled>Hang up</button>
   <label class="toggle"><input type="checkbox" id="fidelity" checked> telephony fidelity (8 kHz μ-law)</label>
+  <label class="toggle" id="sideFxLabel" title="Booking rows stay local either way — this only makes the confirmation email and the Calendar event real."><input type="checkbox" id="sideFx"> <b>live</b> calendar + email</label>
   <input type="text" id="text" placeholder="Mode A — type a caller turn and press Enter">
   <button id="send" class="secondary">Send text</button>
   <span class="status" id="status">idle</span>
@@ -192,6 +193,25 @@
     const delay = Math.max(0, (m.at - playCtx.currentTime) * 1000);
     setTimeout(() => { if (ws && ws.readyState === 1) ws.send(envMark(streamSid, m.name)); }, delay);
   }
+  // ---------- live calendar + email toggle ----------
+  // OFF by default: a booking writes to .testruns with a null calendar and a logging mailer. ON makes
+  // only those two side effects real; the booking row and the seat count stay local either way.
+  const paintSideFx = (s) => {
+    $("sideFx").checked = !!s.enabled;
+    $("sideFx").disabled = !s.available;
+    $("sideFxLabel").style.opacity = s.available ? "1" : "0.45";
+    if (!s.available) $("sideFxLabel").title = `unavailable — ${s.reason}`;
+  };
+  fetch("/sim/side-effects").then(r => r.json()).then(paintSideFx).catch(err => console.warn(err));
+  $("sideFx").onchange = async (e) => {
+    const want = e.target.checked;
+    const r = await fetch("/sim/side-effects", {method: "POST", headers: {"Content-Type": "application/json"},
+                                                body: JSON.stringify({enabled: want})});
+    if (!r.ok) { e.target.checked = false; status(`live side effects refused: ${(await r.json()).detail}`); return; }
+    paintSideFx(await r.json());
+    status(want ? "LIVE: bookings will email the caller and write Tony's calendar" : "bookings stay local");
+  };
+
   $("call").onclick = startCall;
   $("hangup").onclick = () => { if (ws && ws.readyState === 1) { ws.send(envStop(streamSid, callId)); ws.close(); } stopMic(); };
 })();

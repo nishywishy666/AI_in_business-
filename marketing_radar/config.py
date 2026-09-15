@@ -44,6 +44,11 @@ def parse_ladder_json(raw: str | None) -> tuple[LadderRung, ...]:
     if not raw or not raw.strip():
         return DEFAULT_LADDER
     rows = json.loads(raw)
+    if isinstance(rows, dict):  # a single rung pasted without the surrounding [ ]
+        rows = [rows]
+    if not isinstance(rows, list) or not all(isinstance(r, dict) for r in rows):
+        raise ValueError("GEMINI_LADDER_JSON must be a list of rung objects, e.g. "
+                         '[{"ids":["gemini-3-flash"],"quality":"high","daily_cap":20}]')
     rungs = []
     for row in rows:
         ids = [i for i in (row.get("ids") or [row["id"]]) if is_free_model(i)]

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import datetime as dt
+import logging
 import secrets
 import time
 from pathlib import Path
@@ -25,6 +26,7 @@ from services.voice.signature import mint_ws_token
 from services.voice.sinks import LocalJsonlSink
 from services.voice.telemetry import TurnRecorder
 
+log = logging.getLogger(__name__)
 PAGE = Path(__file__).with_name("sim.html")
 LATENCY_BUDGET = {
     "twilio_network_ms": [40, 90], "vad_ms": [0, 0], "smart_turn_ms": [10, 100], "stt_ms": [150, 300],
@@ -41,6 +43,10 @@ class TextTurn(BaseModel):
     text: str
     call_id: str | None = None
     from_number: str | None = None
+
+
+class SideEffectToggle(BaseModel):
+    enabled: bool
 
 
 def new_call_id() -> str:
@@ -102,6 +108,25 @@ def mount_sim(app: FastAPI, config: VoiceConfig, deps: PipelineDeps) -> APIRoute
     @router.get("/budget")
     async def budget() -> dict:
         return LATENCY_BUDGET
+
+    @router.get("/side-effects")
+    async def side_effects() -> dict:
+        """Whether a completed booking sends a real confirmation email and writes a real Calendar
+        event. The booking row itself always stays in the local sink, so no real seat is consumed."""
+        switch = deps.side_effects
+        return switch.state() if switch is not None else {"enabled": False, "available": False,
+                                                          "reason": "no switch on this sink", "sent": []}
+
+    @router.post("/side-effects")
+    async def set_side_effects(body: SideEffectToggle) -> dict:
+        switch = deps.side_effects
+        if switch is None:
+            raise HTTPException(409, "real side effects are not available on this sink")
+        if body.enabled and not switch.available:
+            raise HTTPException(409, f"cannot enable: {switch.reason}")
+        switch.enabled = body.enabled
+        log.info("sim side effects %s", "ON" if switch.enabled else "OFF")
+        return switch.state()
 
     @router.get("/token")
     async def token(call_id: str | None = None) -> dict:

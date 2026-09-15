@@ -108,6 +108,8 @@ class ReceptionistTurnEngine:
 
         reply, tool, tool_args, tool_result, source, used_fallback, end_call = "", None, {}, None, None, False, False
 
+        from .booking_machine import is_no, is_yes  # local: booking_machine imports BookingStep from here
+
         if session.pending_callback and output.field_name == "phone" and output.field_value:
             pc = session.pending_callback
             tool, tool_args = "take_callback", {"reason": pc["reason"], "phone": output.field_value}
@@ -121,8 +123,11 @@ class ReceptionistTurnEngine:
             reply, source, end_call = templates.CLOSING, "template", True
             session.ended = True
 
-        elif output.intent in ("BOOK",) or (output.intent == "CALLBACK" and deps.booking is not None
-                                            and session.slot_state.stage not in ("idle", "done")):
+        elif (output.intent in ("BOOK",)
+              or (deps.booking is not None and session.slot_state.stage not in ("idle", "done")
+                  and (output.intent == "CALLBACK" or is_yes(text) or is_no(text)))):
+            # A bare "yes"/"no" mid-booking is a control signal, not a question: the router routinely
+            # labels it ANSWER_QUESTION, which would strand the caller at the confirm step (R4).
             if deps.booking is None:
                 warnings.append("booking machine not built yet (Phase 4)")
                 recorder.warn(warnings[-1])

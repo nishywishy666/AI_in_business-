@@ -15,6 +15,9 @@ CUTOVER_WARN_MS: 240000             # §6.6 "I might need to put you on hold for
 MAX_RESUMES: 3                      # §6.6 beyond this, end gracefully with a callback
 
 # §7.2 Gemini answering model: resolved at startup by intersecting with ListModels(). Never *-preview, never Pro.
+# Best first. The free tier's daily cap is PER MODEL and the top rung is only ~20 requests/day, so
+# answerer.py steps down this list on a 429 instead of speaking templates for the rest of the day.
+# Gemini 2.x is deliberately absent: those ids now 404 for new API users.
 GEMINI_MODEL_PREFERENCE:
   - gemini-3.8-flash
   - gemini-3.6-flash

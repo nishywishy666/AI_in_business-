@@ -236,6 +236,7 @@ class PipelineDeps:
     business_id: str = ""
     cutover_enabled: bool = True
     clock: Callable[[], dt.datetime] = lambda: dt.datetime.now(dt.timezone.utc)
+    side_effects: Any = None  # services.booking.side_effects.SideEffectSwitch, local sink only
 
 
 def build_pipeline_factory(deps: PipelineDeps) -> PipelineFactory:

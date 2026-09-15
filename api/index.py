@@ -29,7 +29,7 @@ log = logging.getLogger(__name__)
 
 
 def build_engine(config: VoiceConfig, sink: CallSink, bus: HudBus, *, reader=None, router=None, answerer=None,
-                 booking=None, windows: list[dict] | None = None) -> TurnEngine:
+                 booking=None, windows: list[dict] | None = None, switch=None) -> TurnEngine:
     """Real Groq/Gemini/Firestore unless a fake is injected. Clients are created lazily, so this is
     safe to call with dummy keys in tests as long as the fakes are supplied."""
     from services.voice.answerer import GenAiAnswerTransport
@@ -59,13 +59,13 @@ def build_engine(config: VoiceConfig, sink: CallSink, bus: HudBus, *, reader=Non
 
         windows = list((load_yaml("capacity.yaml") or {}).get("windows") or [])
     if booking is None:
-        booking = build_booking(config, sink, reader, windows)
+        booking = build_booking(config, sink, reader, windows, switch)
     return ReceptionistTurnEngine(EngineDeps(reader=reader, sink=sink, bus=bus, router=router, answerer=answerer,
                                              business_id=config.business_id, tz=config.tz_business, booking=booking,
                                              windows=windows))
 
 
-def build_booking(config: VoiceConfig, sink: CallSink, reader, windows: list[dict]):
+def build_booking(config: VoiceConfig, sink: CallSink, reader, windows: list[dict], switch=None):
     """Firestore committer + real mailer/calendar in production; local committer + log mailer +
     null calendar whenever the sink is not Firestore, so a simulator run cannot consume real
     seats, send real mail, or touch the owner's calendar."""
@@ -85,6 +85,24 @@ def build_booking(config: VoiceConfig, sink: CallSink, reader, windows: list[dic
     else:
         committer = LocalCommitter(reader, paths, sink)
         mailer, calendar = LogMailer(), NullCalendar()
+        if switch is not None:
+            # Demo path: the booking row stays local (no real seat, no Firestore) but the email and
+            # the calendar event can be made real at runtime from /sim. Off until switched on.
+            from services.booking.side_effects import SwitchableCalendar, SwitchableMailer
+
+            missing = [name for name, value in (("GMAIL_USER", config.gmail_user),
+                                                ("GMAIL_APP_PASSWORD", config.gmail_app_password),
+                                                ("GOOGLE_CALENDAR_ID", config.google_calendar_id),
+                                                ("GOOGLE_SA_JSON", config.google_sa_json)) if not value]
+            switch.available = not missing
+            switch.reason = f"missing {', '.join(missing)}" if missing else "ready"
+            if not missing:
+                real_mailer = (ResendMailer(config.resend_api_key or "", config.gmail_user or "")
+                               if config.email_provider == "resend"
+                               else GmailMailer(config.gmail_user or "", config.gmail_app_password or ""))
+                mailer = SwitchableMailer(mailer, real_mailer, switch)
+                calendar = SwitchableCalendar(calendar, GoogleCalendarMirror(
+                    config.google_service_account, config.google_calendar_id, config.tz_business), switch)
     return BookingMachine(BookingDeps(reader=reader, sink=sink, committer=committer, mailer=mailer, calendar=calendar,
                                       windows=parse_windows(windows), tz=config.tz_business,
                                       owner_email=config.gmail_user))
@@ -97,6 +115,12 @@ def build_deps(config: VoiceConfig, *, sink: CallSink | None = None, engine: Tur
     receptionist pipeline; otherwise the stream echoes (Phase 1) and only Mode A is intelligent."""
     sink = sink or make_sink(config)
     bus = HudBus()
+    switch = None
+    if sink.kind != "firestore" and not placeholder_engine and engine is None:
+        from services.booking.side_effects import SideEffectSwitch
+
+        switch = SideEffectSwitch()
+        engine_kwargs.setdefault("switch", switch)
     if engine is None:
         engine = PlaceholderTurnEngine() if placeholder_engine else build_engine(config, sink, bus, **engine_kwargs)
     if providers is None and audio:
@@ -106,7 +130,7 @@ def build_deps(config: VoiceConfig, *, sink: CallSink | None = None, engine: Tur
                                            voice_id=config.elevenlabs_voice_id, tts_model=config.elevenlabs_tts_model)
     return PipelineDeps(sink=sink, bus=bus, engine=engine,
                         greeting=greeting if greeting is not None else load_greeting(), providers=providers,
-                        tz=config.tz_business, business_id=config.business_id)
+                        tz=config.tz_business, business_id=config.business_id, side_effects=switch)
 
 
 def create_app(config: VoiceConfig | None = None, *, pipeline_factory: PipelineFactory | None = None,

@@ -1,84 +1,31 @@
 {
-  "_readme": "Facts transcribed from the dashboard mockup's research packet, plus the everyday questions a toastie shop gets on the phone (plan 0012). OWNER-UNVERIFIED: every value is a plausible default for Tony to correct.",
-  "business_name": {
-    "value": "Uncle Tony"
-  },
-  "hours": {
-    "value": "7:30am to 2:30pm Monday to Friday, and 8am to 3pm on Saturday. Closed Sunday."
-  },
-  "address": {
-    "value": "7-9 Eaton Mall, Oakleigh, Victoria 3166"
-  },
-  "phone": {
-    "value": "+61 422 726 343"
-  },
-  "seating": {
-    "value": "28 seats indoor and 12 outdoor"
-  },
-  "socials": {
-    "value": "@uncletony.au on Instagram"
-  },
-  "owner_name": {
-    "value": "Tony Marino"
-  },
-  "owner_email": {
-    "value": "tony@uncletony.com.au"
-  },
-  "website": {
-    "value": "uncletony.com.au"
-  },
-  "parking": {
-    "value": "Eaton Mall is pedestrian-only. There's two-hour street parking on Atherton Road and Portman Street, and the Oakleigh Central car park is a two-minute walk."
-  },
-  "bookings_policy": {
-    "value": "Walk-ins are always welcome. We recommend booking for groups of four or more, and we hold a booked table for ten minutes."
-  },
-  "delivery": {
-    "value": "We don't deliver at the moment, it's takeaway only. Phone ahead and your order is ready in about ten minutes."
-  },
-  "takeaway": {
-    "value": "Everything on the menu is available takeaway. Phone orders are ready in about ten minutes."
-  },
-  "catering": {
-    "value": "We do platters for ten to forty people with two days' notice. Tony confirms the menu and price with you by phone."
-  },
-  "dietary": {
-    "value": "The Wise Guy and The Frank Fungini are vegetarian. We don't have vegan or halal-certified options at the moment."
-  },
-  "kids": {
-    "value": "Kids are welcome. We have two high chairs and can do a half toastie for little ones."
-  },
-  "dogs": {
-    "value": "Dogs are welcome at the outdoor tables, and there's a water bowl by the door."
-  },
-  "coffee": {
-    "value": "Yes, we do espresso coffee from a local Oakleigh roaster, plus cold drinks."
-  },
-  "accessibility": {
-    "value": "Step-free entry from the mall and an accessible table inside. The nearest accessible toilet is in Oakleigh Central."
-  },
-  "payment": {
-    "value": "We take card and cash, including contactless and Apple Pay, with no minimum spend."
-  },
-  "public_holidays": {
-    "value": "We're closed on public holidays. Check our Instagram for the Christmas and Easter hours."
-  },
-  "wifi": {
-    "value": "Free wifi for customers, just ask at the counter for the password."
-  },
-  "gift_vouchers": {
-    "value": "Gift cards start at twenty dollars and are sold at the counter."
-  },
-  "alcohol": {
-    "value": "We're not licensed and not BYO, we're a daytime cafe."
-  },
-  "wait_time": {
-    "value": "The lunch rush is twelve to one thirty, when a table can be a ten to fifteen minute wait. Before noon you'll walk straight in."
-  },
-  "jobs": {
-    "value": "We're not hiring right now. Email a CV to tony@uncletony.com.au and Tony keeps them on file."
-  },
-  "loyalty": {
-    "value": "No loyalty card yet. Follow @uncletony.au on Instagram for the weekly specials."
-  }
+  "_readme": "Facts transcribed from the dashboard mockup's research packet, plus the everyday questions a toastie shop gets on the phone (plan 0012). OWNER-UNVERIFIED: every value is a plausible default for Tony to correct. Entries marked \"source\": \"public_web\" were reconciled against public listings (uncletony.com.au, its Uber Eats storefront, the Zabihah halal directory) and carry a sourceUrl; they are likewise unconfirmed by the owner. Entries with publicSourceUrl were checked and already matched the public record.",
+  "business_name": {"value": "Uncle Tony"},
+  "hours": {"value": "7:30am to 2:30pm Monday to Friday, and 8am to 3pm on Saturday. Closed Sunday.", "publicSourceUrl": "https://uncletony.com.au/"},
+  "address": {"value": "7-9 Eaton Mall, Oakleigh, Victoria 3166", "publicSourceUrl": "https://uncletony.com.au/"},
+  "phone": {"value": "+61 422 726 343", "publicSourceUrl": "https://uncletony.com.au/"},
+  "seating": {"value": "28 seats indoor and 12 outdoor"},
+  "socials": {"value": "@uncletony.au on Instagram", "publicSourceUrl": "https://uncletony.com.au/"},
+  "owner_name": {"value": "Tony Marino"},
+  "owner_email": {"value": "admin@uncletony.com.au", "source": "public_web", "sourceUrl": "https://uncletony.com.au/", "sourceNote": "Website lists admin@uncletony.com.au; the mockup had tony@uncletony.com.au.", "confirmedByOwner": false},
+  "website": {"value": "uncletony.com.au", "publicSourceUrl": "https://uncletony.com.au/"},
+  "parking": {"value": "Eaton Mall is pedestrian-only. There's two-hour street parking on Atherton Road and Portman Street, and the Oakleigh Central car park is a two-minute walk."},
+  "bookings_policy": {"value": "Walk-ins are always welcome. We recommend booking for groups of four or more, and we hold a booked table for ten minutes."},
+  "delivery": {"value": "You can order delivery through Uber Eats, and everything on the menu is available takeaway if you'd rather collect it.", "source": "public_web", "sourceUrl": "https://www.ubereats.com/au/store/uncle-tony-oakleigh-eaton-mall/-VREmZoYTQStvVRKqATJBA", "sourceNote": "The shop has an active Uber Eats storefront.", "confirmedByOwner": false},
+  "takeaway": {"value": "Everything on the menu is available takeaway. Phone orders are ready in about ten minutes."},
+  "catering": {"value": "We do platters for ten to forty people with two days' notice. Tony confirms the menu and price with you by phone."},
+  "halal": {"value": "We're advertised as one hundred per cent halal. If you need the certification details, I'd recommend confirming with Tony directly.", "source": "public_web", "sourceUrl": "https://www.zabihah.com/restaurants/08dd3893-7961-451a-8c70-d63a6a64980b/uncle-tonys-melbourne-victoria", "sourceNote": "Advertised as 100% halal by the shop's own social marketing and listed in the Zabihah halal directory. Certification paperwork NOT verified - the phrasing is deliberately hedged.", "confirmedByOwner": false},
+  "dietary": {"value": "The Wise Guy and The Frank Fungini are vegetarian. We don't have vegan options, and I can't confirm individual allergens without checking with Tony.", "source": "public_web", "sourceUrl": "https://uncletony.com.au/", "sourceNote": "The shop is advertised as halal, so 'no halal-certified options' was wrong; halal now has its own fact.", "confirmedByOwner": false},
+  "kids": {"value": "Kids are welcome. We have two high chairs and can do a half toastie for little ones."},
+  "dogs": {"value": "Dogs are welcome at the outdoor tables, and there's a water bowl by the door."},
+  "coffee": {"value": "Yes, we do espresso coffee from a local Oakleigh roaster, plus cold drinks."},
+  "accessibility": {"value": "Step-free entry from the mall and an accessible table inside. The nearest accessible toilet is in Oakleigh Central."},
+  "payment": {"value": "We take card and cash, including contactless and Apple Pay, with no minimum spend."},
+  "public_holidays": {"value": "We're closed on public holidays. Check our Instagram for the Christmas and Easter hours."},
+  "wifi": {"value": "Free wifi for customers, just ask at the counter for the password."},
+  "gift_vouchers": {"value": "Gift cards start at twenty dollars and are sold at the counter."},
+  "alcohol": {"value": "We're not licensed and not BYO, we're a daytime cafe."},
+  "wait_time": {"value": "The lunch rush is twelve to one thirty, when a table can be a ten to fifteen minute wait. Before noon you'll walk straight in."},
+  "jobs": {"value": "We're not hiring right now. Email a CV to admin@uncletony.com.au and Tony keeps them on file.", "source": "public_web", "sourceUrl": "https://uncletony.com.au/", "sourceNote": "Email corrected to the one listed on the website.", "confirmedByOwner": false},
+  "loyalty": {"value": "No loyalty card yet. Follow @uncletony.au on Instagram for the weekly specials."}
 }

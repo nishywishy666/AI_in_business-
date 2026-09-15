@@ -278,7 +278,11 @@ def get_business_fact(reader: BusinessReader, business_id: str, fact_key: str) -
         return Lookup("get_business_fact", {"fact_key": fact_key}, "not_found", reason="no_data")
     from . import templates
 
-    template = (templates.FACT_HOURS.format(hours=value, day="today") if fact_key == "hours"
+    # A fact whose value is already a sentence is spoken as-is: wrapping it produces "Closed
+    # Sunday. on today." and appending a second full stop produces "...directly..".
+    prose = value.rstrip().endswith((".", "!", "?"))
+    template = (value.rstrip() if prose
+                else templates.FACT_HOURS.format(hours=value, day="today") if fact_key == "hours"
                 else templates.FACT_GENERIC.format(value=value))
     return Lookup("get_business_fact", {"fact_key": fact_key}, "fact",
                   {"fact_key": fact_key, "value": value, "doc": {k: v for k, v in doc.items() if k != "value"}},
