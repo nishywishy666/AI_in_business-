@@ -54,6 +54,18 @@ def test_period_windows_are_business_local_and_previous_is_equal_length():
     assert an.period_for("bogus", NOW, SETTINGS).key == "today"
 
 
+def test_month_period_is_the_calendar_month_to_date():
+    """"This month" on both selectors means since the 1st in the business's own timezone — not a
+    rolling 30 days, which is what the untouched `30d` key still serves."""
+    month = an.period_for("month", NOW, SETTINGS)
+    assert month.start == dt.datetime(2026, 8, 31, 14, 0, tzinfo=UTC)  # 1 Sep, midnight Melbourne
+    assert month.end == NOW and month.label == "this month"
+    assert an.period_for("30d", NOW, SETTINGS).start == dt.datetime(2026, 8, 11, 14, 0, tzinfo=UTC)
+    # c6 is 30 h old: inside the month, outside today
+    a = an.compute(snapshot(), SETTINGS, period_key="month", now=NOW)
+    assert a["calls"]["n"] == 7 and a["period"]["label"] == "this month"
+
+
 def test_containment_task_success_and_unknowns():
     a = an.compute(snapshot(), SETTINGS, period_key="today", now=NOW)
     assert a["calls"]["n"] == 6  # c1..c5 + c7 today; c6 yesterday

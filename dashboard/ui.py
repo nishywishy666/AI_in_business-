@@ -289,6 +289,26 @@ PATCHES: list[tuple[str, str]] = [
     ('                        <button class="btn btn-secondary" style="{{ t.saveStyle }}" onClick="{{ t.onSave }}">{{ t.saveGlyph }} Save</button>\n',
      '                        <button class="btn btn-secondary" style="{{ t.saveStyle }}" onClick="{{ t.onSave }}">{{ t.saveGlyph }} Save</button>\n'
      '                        <button class="btn btn-secondary" style="{{ t.watchStyle }}" onClick="{{ t.onWatch }}" title="{{ t.watchTitle }}">▶ Watch</button>\n'),
+    # Overview period selector (plan 0014): the freshness line becomes a row, with Today / This week /
+    # This month on its right. Every tile, the donut and the calls table below follow the choice.
+    ('        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;font-size:11px;color:var(--color-neutral-500)">\n'
+     '          <span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-500);flex:none"></span>\n'
+     '          <span>Last refreshed {{ freshness.asOf }} · {{ freshness.timezone }} · refreshes every {{ freshness.staleAfterMinutes }} min</span>\n'
+     '        </div>',
+     '        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;flex-wrap:wrap">\n'
+     '          <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--color-neutral-500)">\n'
+     '            <span style="width:6px;height:6px;border-radius:50%;background:var(--color-accent-500);flex:none"></span>\n'
+     '            <span>Last refreshed {{ freshness.asOf }} · {{ freshness.timezone }} · refreshes every {{ freshness.staleAfterMinutes }} min</span>\n'
+     '          </div>\n'
+     '          <div class="seg" style="font-size:12px;flex:none">\n'
+     '            <sc-for list="{{ overviewPeriodOptions }}" as="ovp" hint-placeholder-count="3">\n'
+     '              <label class="seg-opt" style="white-space:nowrap"><input type="radio" checked="{{ ovp.active }}" onChange="{{ ovp.onSelect }}">{{ ovp.label }}</label>\n'
+     '            </sc-for>\n'
+     '          </div>\n'
+     '        </div>'),
+    # ...including that block\'s own table heading, which the export hard-coded to today.
+    ('<div class="card-title" style="margin-bottom:4px">Today\'s calls</div>',
+     '<div class="card-title" style="margin-bottom:4px">{{ overviewCallsTitle }}</div>'),
 ]
 
 

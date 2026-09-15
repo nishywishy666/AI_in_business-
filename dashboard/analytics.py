@@ -24,7 +24,8 @@ from typing import Any
 from .records import CallRecord, CallbackRecord, ReviewRecord, Snapshot, normalise_question, review_key
 from .settings import DashboardSettings
 
-PERIODS = {"today": "today", "week": "this week", "30d": "last 30 days", "custom": "last 30 days"}
+PERIODS = {"today": "today", "week": "this week", "month": "this month", "30d": "last 30 days",
+           "custom": "last 30 days"}
 GOOD, WATCH, BAD, NO_DATA = "Good", "Watch", "Needs attention", "No data"
 
 
@@ -65,6 +66,9 @@ def period_for(key: str, now: dt.datetime, settings: DashboardSettings, *,
         start = midnight
     elif key == "week":
         start = midnight - dt.timedelta(days=6)
+    elif key == "month":
+        # calendar month-to-date, so "this month" means what the owner's calendar says it means
+        start = midnight.replace(day=1)
     else:
         start = midnight - dt.timedelta(days=29)
     return Period(key, start.astimezone(dt.timezone.utc), now, PERIODS[key])
@@ -337,7 +341,8 @@ def daily_series(snapshot: Snapshot, settings: DashboardSettings, *, now: dt.dat
 
 
 def _previous_label(key: str) -> str:
-    return {"today": "yesterday", "week": "the week before", "30d": "the 30 days before", "custom": "the 30 days before"}[key]
+    return {"today": "yesterday", "week": "the week before", "month": "the period before",
+            "30d": "the 30 days before", "custom": "the 30 days before"}[key]
 
 
 def _bookings_compare(count: int, covers: int, prev_count: int, prev_covers: int, previous_label: str) -> str:

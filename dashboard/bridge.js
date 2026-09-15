@@ -337,6 +337,7 @@
     overlordDraft: "", overlordPlaceholder: "Ask about calls, bookings or trends…",
     setOverlordDraft: function () {}, overlordKeyDown: function () {}, sendOverlord: function () {},
     chartRange7: true, chartRange30: false, setChartRange7: function () {}, setChartRange30: function () {},
+    overviewPeriodOptions: [], overviewCallsTitle: "Recent calls", periodOptions: [],
     chartDeltaArrow: "↑", chartDeltaLabel: "vs first day in last 7 days",
     goProfile: function () {},
     searchQuery: "", searchPlaceholder: "Search screens…", searchOpen: false, searchResults: [],
@@ -467,7 +468,13 @@
   P.__apply = function (d, period) {
     var live = this.__live || (this.__live = { analytics: {}, angles: {}, pending: {} });
     live.data = d; live.error = null; live.loadedAt = Date.now();
+    // A bootstrap is a fresh read of the same records, so every other period's cached tiles are now
+    // stale. Keep only the payload this response carries and re-fetch the periods actually on screen
+    // — without this the Overview could sit on a week-old "This week" forever.
+    live.analytics = {}; live.pendingPeriods = {};
     live.analytics[d.analytics.period.key] = d.analytics;
+    this.__ensurePeriod(this.state.overviewPeriod || "today");
+    this.__ensurePeriod(this.state.analyticsPeriod || "today");
     this.callsData = d.calls;
     this.callbacksData = d.callbacks;
     this.trendsData = d.trends.items.length ? d.trends.items : [PLACEHOLDER_TREND];
@@ -533,6 +540,10 @@
     vals.chartRange7 = !thirty; vals.chartRange30 = thirty;
     vals.setChartRange7 = function () { self.setChartRange("7d"); };
     vals.setChartRange30 = function () { self.setChartRange("30d"); };
+    // Today / This week / This month, on both screens — bound before the first load too, so a click
+    // while the page is still warming up is not swallowed.
+    vals.overviewPeriodOptions = this.__periodOptions(this.state.overviewPeriod || "today", this.setOverviewPeriod, false);
+    vals.periodOptions = this.__periodOptions(this.state.analyticsPeriod || "today", this.setAnalyticsPeriod, true);
     vals.goProfile = function () { self.setScreen("profile"); };
     this.__headerVals(vals);
     this.__calendarVals(vals);
@@ -557,9 +568,16 @@
     var a = (s.analyticsPeriod === "custom" && live.customAnalytics)
       || live.analytics[s.analyticsPeriod] || d.analytics;
     var ov = d.overview;
+    // The Overview picks its own window. `ov` is always today (the bootstrap computes it that way),
+    // so it is both the "Today" answer and the fallback while another period is still in flight.
+    var op = s.overviewPeriod || "today";
+    var oa = live.analytics[op] || null;
+    var oKpis = oa ? oa.kpis : ov.kpis, oRoute = oa ? oa.routeMix : ov.routeMix;
+    var oWindow = oa ? oa.period : null;
+    if (!oWindow && op === d.analytics.period.key) oWindow = d.analytics.period;
 
     // ---- header / identity ----
-    Object.assign(vals, ov.kpis, {
+    Object.assign(vals, oKpis, {
       menuMetaLabel: d.setup.menuMetaLabel, menuCountLabel: d.setup.menuCountLabel,
       dataSourceLabel: a.dataSourceLabel + (a.freshness.stale ? " · stale" : ""),
       usageMinutesLabel: d.usage.label, usageMinutesPct: d.usage.pct,
@@ -573,7 +591,8 @@
     vals.freshness = Object.assign({}, d.analytics.freshness, live.error ? { asOf: "unavailable (" + live.error + ")" } : {});
 
     // ---- overview ----
-    vals.routeLegend = ov.routeMix.legend; vals.donutStyle = ov.routeMix.donutStyle; vals.donutTotal = ov.routeMix.total;
+    vals.routeLegend = oRoute.legend; vals.donutStyle = oRoute.donutStyle; vals.donutTotal = oRoute.total;
+    vals.overviewCallsTitle = CALLS_TITLE[op] || "Recent calls";
     var chartSeries = live.series || ov.chart, delta = parseFloat(vals.chartDeltaPct);
     vals.callVolumeLabels = chartSeries.labels;
     vals.chartDeltaArrow = delta < 0 ? "↓" : delta > 0 ? "↑" : "↔";
@@ -602,6 +621,19 @@
     (vals.calls || []).forEach(enrich);
     if (vals.summaryModalCall) enrich(vals.summaryModalCall);
     vals.callLogCountLabel = "Showing " + (vals.calls || []).length + " of " + d.calls.length + " " + ov.callLogCountLabel;
+    // The export took the four most recent calls of all time; clip them to the chosen window instead,
+    // so the table under the tiles is counting the same calls they are.
+    if (oWindow) {
+      var from = Date.parse(oWindow.start), to = Date.parse(oWindow.end);
+      vals.overviewRecentCalls = (vals.calls || []).filter(function (row) {
+        var src = byId[row.id];
+        if (!src) return false;
+        var at = Date.parse(src.startedAt);
+        return at >= from && at < to;
+      }).slice(0, 4).map(function (c) {
+        return { time: c.time, route: c.route, outcome: c.outcome, confidence: c.confidence, tagStyle: c.tagStyle };
+      });
+    }
     vals.voiceOpsTiles = a.voiceOpsTiles;
 
     // ---- callbacks: Open shows the full number and the call's transcript (plan 0013) ----
@@ -1206,8 +1238,42 @@
     return origSetScreen.apply(this, arguments);
   };
   P.setChartRange = function (range) { this.setState({ chartRange: range }); };
-  P.setAnalyticsPeriod = function (p) {
+
+  // ---- period selectors, Overview and Analytics (plan 0014) ----
+  // The API serves a whole presented payload (tiles, KPIs, route mix, gaps) for one period, so both
+  // screens share one cache keyed by period key. "custom" is the Analytics calendar's own button and
+  // is fetched by applyCalendar with real dates, never here.
+  var PERIOD_CHOICES = [["today", "Today"], ["week", "This week"], ["month", "This month"]];
+  var CALLS_TITLE = { today: "Today's calls", week: "This week's calls", month: "This month's calls" };
+  P.__periodOptions = function (active, onPick, withCustom) {
+    var self = this;
+    var opts = PERIOD_CHOICES.map(function (choice) {
+      return { label: choice[1], active: active === choice[0],
+        onSelect: function () { onPick.call(self, choice[0]); } };
+    });
+    if (withCustom) opts.push({ label: "Custom", active: active === "custom", onSelect: function () { onPick.call(self, "custom"); } });
+    return opts;
+  };
+  P.__ensurePeriod = function (key) {
     var self = this, live = this.__live;
+    if (!live || !key || key === "custom") return;
+    if (!live.pendingPeriods) live.pendingPeriods = {};
+    if (live.analytics[key] || live.pendingPeriods[key]) return;
+    live.pendingPeriods[key] = true;
+    api("/api/dashboard/analytics?period=" + encodeURIComponent(key)).then(function (a) {
+      delete live.pendingPeriods[key];
+      live.analytics[key] = a;
+      self.setState({});
+    }).catch(function (e) {
+      delete live.pendingPeriods[key];
+      console.error("[dashboard] analytics", e);
+    });
+  };
+  P.setOverviewPeriod = function (p) {
+    this.setState({ overviewPeriod: p });
+    this.__ensurePeriod(p);
+  };
+  P.setAnalyticsPeriod = function (p) {
     if (p === "custom") {  // the Custom option is the calendar's own button
       return this.setState(function (s) {
         return { analyticsPeriod: "custom", calendarOpen: true,
@@ -1215,10 +1281,7 @@
       });
     }
     this.setState({ analyticsPeriod: p, calendarOpen: false });
-    if (live && !live.analytics[p]) {
-      api("/api/dashboard/analytics?period=" + encodeURIComponent(p)).then(function (a) { live.analytics[p] = a; self.setState({}); })
-        .catch(function (e) { console.error("[dashboard] analytics", e); });
-    }
+    this.__ensurePeriod(p);
   };
   P.toggleNotif = function (key) {
     var next = Object.assign({}, this.state.notifPrefs);
